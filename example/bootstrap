@@ -1,8 +1,7 @@
-# aws-lambda
-
-```php
 #!/usr/bin/env php
 <?php
+
+declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 
@@ -19,10 +18,3 @@ $handler = new class implements RequestHandlerInterface {
 };
 $runtime = new Runtime($handler);
 $runtime->run();
-```
-
-## example
-
-```
-sam build && sam local start-api
-```

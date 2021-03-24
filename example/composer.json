@@ -1,0 +1,5 @@
+{
+  "require": {
+    "ixbox/phambda": "dev-main"
+  }
+}
