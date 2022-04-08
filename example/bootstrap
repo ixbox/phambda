@@ -1,3 +1,4 @@
+#!/usr/bin/env php
 <?php
 
 require __DIR__ . '/vendor/autoload.php';
@@ -9,7 +10,8 @@ $factory = new GuzzleHttp\Psr7\HttpFactory();
 $worker = new Phambda\Worker($client, $factory, $factory);
 $httpWorker = new Phambda\Http\Psr\HttpWorker($worker, $factory, $factory);
 
-$runtime = new Phambda\Http\Psr\Runtime(new class implements Psr\Http\Server\RequestHandlerInterface {
+$runtime = new Phambda\Http\Psr\Runtime(new class implements Psr\Http\Server\RequestHandlerInterface
+{
     public function handle(Psr\Http\Message\ServerRequestInterface $request): Psr\Http\Message\ResponseInterface
     {
         return new GuzzleHttp\Psr7\Response(body: "Hello World!");

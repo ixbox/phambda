@@ -1,5 +1,6 @@
 {
   "require": {
-    "ixbox/phambda": "dev-main"
+    "ixbox/phambda": "dev-main",
+    "guzzlehttp/guzzle": "^7.4"
   }
 }
