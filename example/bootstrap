@@ -1,20 +1,19 @@
-#!/usr/bin/env php
 <?php
-
-declare(strict_types=1);
 
 require __DIR__ . '/vendor/autoload.php';
 
-use GuzzleHttp\Psr7\Response;
-use Phambda\Http\Psr\Runtime;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Server\RequestHandlerInterface;
+$client = new GuzzleHttp\Client([
+    'base_uri' => 'http://' . getenv('AWS_LAMBDA_RUNTIME_API') . '/2018-06-01/',
+]);
+$factory = new GuzzleHttp\Psr7\HttpFactory();
+$worker = new Phambda\Worker($client, $factory, $factory);
+$httpWorker = new Phambda\Http\Psr\HttpWorker($worker, $factory, $factory);
 
-$handler = new class implements RequestHandlerInterface {
-    public function handle(ServerRequestInterface $request): ResponseInterface {
-        return new Response(body: "Hello World!");
+$runtime = new Phambda\Http\Psr\Runtime(new class implements Psr\Http\Server\RequestHandlerInterface {
+    public function handle(Psr\Http\Message\ServerRequestInterface $request): Psr\Http\Message\ResponseInterface
+    {
+        return new GuzzleHttp\Psr7\Response(body: "Hello World!");
     }
-};
-$runtime = new Runtime($handler);
+}, $httpWorker);
+
 $runtime->run();

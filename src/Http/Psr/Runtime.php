@@ -1,31 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Phambda\Http\Psr;
 
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\GuzzleException;
-use Phambda\RuntimeInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-class Runtime implements RuntimeInterface
+class Runtime
 {
     public function __construct(
-        private RequestHandlerInterface $handler
+        private RequestHandlerInterface $handler,
+        private HttpWorker $worker,
     ) {
     }
 
     public function run(): void
     {
-        $client = new Client([
-            'base_uri' => 'http://' . getenv('AWS_LAMBDA_RUNTIME_API') . '/2018-06-01/',
-        ]);
-        $worker = new Worker($client);
-
-        while ($invocation = $worker->nextInvocation()) {
-            $worker->respond(
-                awsInvocationId: $invocation->awsInvocationId,
-                response: $this->handler->handle($invocation->request),
+        do {
+            $request = $this->worker->nextRequest();
+            $response = $this->handler->handle($request);
+            $this->worker->respond(
+                awsInvocationId: $request->getServerParams()['aws_request_id'],
+                response: $response,
             );
-        }
+        } while (true);
     }
 }
