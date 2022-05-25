@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace Phambda\Http\Psr;
 
+use Phambda\RuntimeInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
-class Runtime
+class Runtime implements RuntimeInterface
 {
     public function __construct(
-        private RequestHandlerInterface $handler,
-        private HttpWorker $worker,
+        private readonly RequestHandlerInterface $handler,
+        private readonly HttpWorker $worker,
     ) {
     }
 
