@@ -16,12 +16,14 @@ class Runtime implements RuntimeInterface
     {
         while (true) {
             $invocation = $this->worker->nextInvocation();
-            $result = $this->handler->handle($invocation->event, $invocation->context);
-            $payload = new Payload(
-                $invocation->context['aws_request_id'],
+            $result = $this->handler->handle(
+                $invocation->event->toArray(),
+                $invocation->context->toArray()
+            );
+            $this->worker->respond(
+                $invocation->context->awsRequestId,
                 $result,
             );
-            $this->worker->respond($payload);
         }
     }
 }

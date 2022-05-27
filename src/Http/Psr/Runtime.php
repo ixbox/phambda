@@ -20,9 +20,10 @@ class Runtime implements RuntimeInterface
         do {
             $request = $this->worker->nextRequest();
             $response = $this->handler->handle($request);
+
             $this->worker->respond(
-                awsInvocationId: $request->getServerParams()['aws_request_id'],
-                response: $response,
+                $request,
+                $response,
             );
         } while (true);
     }
