@@ -34,10 +34,6 @@ class Worker implements WorkerInterface
             logGroupName: getenv('AWS_LAMBDA_LOG_GROUP_NAME'),
             logStreamName: getenv('AWS_LAMBDA_LOG_STREAM_NAME'),
             deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms'),
-            traceId: $response->getHeaderLine('Lambda-Runtime-Trace-Id'),
-            xAmznTraceId: getenv('_X_AMZN_TRACE_ID'),
-            identity: $response->getHeaderLine('Lambda-Runtime-Cognito-Identity'),
-            clientContext: $response->getHeaderLine('Lambda-Runtime-Client-Context'),
         );
 
         return new Invocation($event, $context);

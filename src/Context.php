@@ -15,10 +15,6 @@ class Context
         public readonly string $logGroupName,
         public readonly string $logStreamName,
         public readonly string $deadlineMs,
-        public readonly string $traceId,
-        public readonly string $xAmznTraceId,
-        public readonly string $identity,
-        public readonly string $clientContext,
     ) {
     }
 
@@ -33,10 +29,6 @@ class Context
             'logGroupName' => $this->logGroupName,
             'logStreamName' => $this->logStreamName,
             'deadlineMs' => $this->deadlineMs,
-            'traceId' => $this->traceId,
-            'xAmznTraceId' => $this->xAmznTraceId,
-            'identity' => $this->identity,
-            'clientContext' => $this->clientContext,
         ];
     }
 }
