@@ -7,18 +7,18 @@ namespace Phambda;
 class Context
 {
     public function __construct(
-        public readonly $functionName,
-        public readonly $functionVersion,
-        public readonly $invokedFunctionArn,
-        public readonly $memoryLimitInMb,
-        public readonly $awsRequestId,
-        public readonly $logGroupName,
-        public readonly $logStreamName,
-        public readonly $deadlineMs,
-        public readonly $traceId,
-        public readonly $xAmznTraceId,
-        public readonly $identity,
-        public readonly $clientContext,
+        public readonly string $functionName,
+        public readonly string $functionVersion,
+        public readonly string $invokedFunctionArn,
+        public readonly string $memoryLimitInMb,
+        public readonly string $awsRequestId,
+        public readonly string $logGroupName,
+        public readonly string $logStreamName,
+        public readonly string $deadlineMs,
+        public readonly string $traceId,
+        public readonly string $xAmznTraceId,
+        public readonly string $identity,
+        public readonly string $clientContext,
     ) {
     }
 
