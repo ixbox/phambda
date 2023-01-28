@@ -33,8 +33,8 @@ class HttpWorker
         foreach ($invocation->event->headers as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
-        $request = $request->withCookieParams($invocation->event->cookies ?? []);
-        $request = $request->withQueryParams($invocation->event->queryStringParameters ?? []);
+        $request = $request->withCookieParams((array) $invocation->event->cookies);
+        $request = $request->withQueryParams((array) $invocation->event->queryStringParameters);
         $request = $request->withBody($this->streamFactory->createStream($invocation->event->body));
 
         return $request;
