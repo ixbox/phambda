@@ -49,6 +49,7 @@ class HttpWorker
         $this->worker->respond(
             $request->getServerParams()['awsRequestId'],
             json_encode([
+                'isBase64Encoded' => false,
                 'statusCode' => $response->getStatusCode(),
                 'headers' => $response->getHeaders(),
                 'body' => (string) $response->getBody(),
