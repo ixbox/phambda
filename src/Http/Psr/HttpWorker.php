@@ -51,6 +51,7 @@ class HttpWorker
             json_encode([
                 'isBase64Encoded' => false,
                 'statusCode' => $response->getStatusCode(),
+                'statusDescription' => (string) $response->getStatusCode(),
                 'headers' => $response->getHeaders(),
                 'body' => (string) $response->getBody(),
             ]),
