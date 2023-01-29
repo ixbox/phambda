@@ -22,8 +22,8 @@ class HttpWorker
     public function nextRequest(): ServerRequestInterface
     {
         $invocation = $this->worker->nextInvocation();
-        $method = $invocation->event->requestContext->http->method;
-        $path = $invocation->event->requestContext->http->path;
+        $method = $invocation->event->requestContext->http->method ??  $invocation->event->httpMethod;
+        $path = $invocation->event->requestContext->http->path ?? $invocation->event->path;
         $request = $this->requestFactory->createServerRequest(
             $method,
             $path,
