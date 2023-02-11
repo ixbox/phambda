@@ -22,7 +22,7 @@ class HttpWorker
     public function nextRequest(): ServerRequestInterface
     {
         $invocation = $this->worker->nextInvocation();
-        $method = $invocation->event->requestContext->http->method ??  $invocation->event->httpMethod;
+        $method = $invocation->event->requestContext->http->method ?? $invocation->event->httpMethod;
         $path = $invocation->event->requestContext->http->path ?? $invocation->event->path;
         $request = $this->requestFactory->createServerRequest(
             $method,
@@ -49,10 +49,9 @@ class HttpWorker
         $this->worker->respond(
             $request->getServerParams()['awsRequestId'],
             json_encode([
-                'isBase64Encoded' => false,
                 'statusCode' => $response->getStatusCode(),
                 'statusDescription' => (string) $response->getStatusCode(),
-                'headers' => $response->getHeaders(),
+                'multiValueHeaders' => $response->getHeaders(),
                 'body' => (string) $response->getBody(),
             ]),
         );
