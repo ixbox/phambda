@@ -4,5 +4,5 @@ namespace Phambda;
 
 interface HandlerInterface
 {
-    public function handle(array $event, array $context): string;
+    public function handle(Event $event, Context $context): string;
 }

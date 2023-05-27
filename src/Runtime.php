@@ -17,8 +17,8 @@ class Runtime implements RuntimeInterface
         while (true) {
             $invocation = $this->worker->nextInvocation();
             $result = $this->handler->handle(
-                $invocation->event->toArray(),
-                $invocation->context->toArray()
+                $invocation->event,
+                $invocation->context,
             );
             $this->worker->respond(
                 $invocation->context->awsRequestId,

@@ -13,10 +13,11 @@ use Psr\Http\Message\StreamFactoryInterface;
 class HttpWorker
 {
     public function __construct(
-        private WorkerInterface $worker,
-        private ServerRequestFactoryInterface $requestFactory,
-        private StreamFactoryInterface $streamFactory,
-    ) {
+        private readonly WorkerInterface               $worker,
+        private readonly ServerRequestFactoryInterface $requestFactory,
+        private readonly StreamFactoryInterface        $streamFactory,
+    )
+    {
     }
 
     public function nextRequest(): ServerRequestInterface
@@ -29,7 +30,7 @@ class HttpWorker
             $path,
             $invocation->context->toArray(),
         );
-
+        $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
         foreach ($invocation->event->headers as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
@@ -44,15 +45,25 @@ class HttpWorker
      * @param string $awsInvocationId
      * @param ResponseInterface $response
      */
-    public function respond(ServerRequestInterface $request, ResponseInterface $response): void
+    public function respond(string $awsInvocationId, ResponseInterface $response): void
     {
+        $statusCode = $response->getStatusCode();
+        // cookieだけ set-cookie ではなく cookies で返す必要がある
+        $cookies = $response->getHeader('set-cookie');
+        // headerから set-cookie を取り除く
+        $headers = $response->getHeaders();
+        unset($headers['set-cookie']);
+
+        $body = $response->getBody()->getContents();
+
         $this->worker->respond(
-            $request->getServerParams()['awsRequestId'],
+            $awsInvocationId,
             json_encode([
-                'statusCode' => $response->getStatusCode(),
-                'statusDescription' => (string) $response->getStatusCode(),
-                'multiValueHeaders' => $response->getHeaders(),
-                'body' => (string) $response->getBody(),
+                'statusCode' => $statusCode,
+                'statusDescription' => '',
+                'multiValueHeaders' => $headers,
+                'body' => $body,
+                'cookies' => $cookies,
             ]),
         );
     }
