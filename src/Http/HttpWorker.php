@@ -13,11 +13,10 @@ use Psr\Http\Message\StreamFactoryInterface;
 class HttpWorker
 {
     public function __construct(
-        private readonly WorkerInterface               $worker,
+        private readonly WorkerInterface $worker,
         private readonly ServerRequestFactoryInterface $requestFactory,
-        private readonly StreamFactoryInterface        $streamFactory,
-    )
-    {
+        private readonly StreamFactoryInterface $streamFactory,
+    ) {
     }
 
     public function nextRequest(): ServerRequestInterface
@@ -36,7 +35,9 @@ class HttpWorker
         }
         $request = $request->withCookieParams((array) $invocation->event->cookies);
         $request = $request->withQueryParams((array) $invocation->event->queryStringParameters);
-        $request = $request->withBody($this->streamFactory->createStream($invocation->event->body));
+        if ($invocation->event->body) {
+            $request = $request->withBody($this->streamFactory->createStream($invocation->event->body));
+        }
 
         return $request;
     }
