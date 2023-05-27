@@ -31,7 +31,7 @@ class HttpWorker
         );
         $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
         foreach ($invocation->event->headers as $name => $value) {
-            $request = $request->withHeader($name, count($value) === 1 ? $value[0] : $value);
+            $request = $request->withHeader($name, $value);
         }
         $request = $request->withCookieParams((array) $invocation->event->cookies);
         $request = $request->withQueryParams((array) $invocation->event->queryStringParameters);
@@ -52,10 +52,13 @@ class HttpWorker
         // cookieだけ set-cookie ではなく cookies で返す必要がある
         $cookies = $response->getHeader('set-cookie');
         // headerから set-cookie を取り除く
-        $headers = $response->getHeaders();
-        $headers = array_change_key_case($headers);
-        unset($headers['set-cookie']);
-
+        $headers = [];
+        foreach ($response->getHeaders() as $key => $value) {
+            if (strtolower($key) === 'set-cookie') {
+                continue;
+            }
+            $headers[$key] = count($value) === 1 ? $value[0] : $value;
+        }
         $body = $response->getBody()->getContents();
 
         $this->worker->respond(
