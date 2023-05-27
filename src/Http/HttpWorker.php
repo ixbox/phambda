@@ -61,7 +61,7 @@ class HttpWorker
             json_encode([
                 'statusCode' => $statusCode,
                 'statusDescription' => '',
-                'multiValueHeaders' => $headers,
+                'headers' => $headers,
                 'body' => $body,
                 'cookies' => $cookies,
             ]),
