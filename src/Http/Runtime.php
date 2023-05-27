@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Phambda\Http\Psr;
+namespace Phambda\Http;
 
 use Phambda\RuntimeInterface;
 use Psr\Http\Server\RequestHandlerInterface;
