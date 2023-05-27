@@ -52,6 +52,7 @@ class HttpWorker
         $cookies = $response->getHeader('set-cookie');
         // headerから set-cookie を取り除く
         $headers = $response->getHeaders();
+        $headers = array_change_key_case($headers);
         unset($headers['set-cookie']);
 
         $body = $response->getBody()->getContents();
