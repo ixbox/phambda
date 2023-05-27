@@ -31,7 +31,7 @@ class HttpWorker
         );
         $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
         foreach ($invocation->event->headers as $name => $value) {
-            $request = $request->withHeader($name, $value);
+            $request = $request->withHeader($name, count($value) === 1 ? $value[0] : $value);
         }
         $request = $request->withCookieParams((array) $invocation->event->cookies);
         $request = $request->withQueryParams((array) $invocation->event->queryStringParameters);
