@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Phambda;
 
+use JsonException;
 use stdClass;
 
 class Event
@@ -13,23 +14,30 @@ class Event
     ) {
     }
 
-    public function __get($name): mixed
+    public function __get(string $name): mixed
     {
         return $this->event->{$name} ?? null;
     }
 
-    public function __isset($name): bool
+    public function __isset(string $name): bool
     {
         return isset($this->event->{$name});
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(): array
     {
         return (array) $this->event;
     }
 
-    public static function fromJsonString($json): self
+    /**
+     * @throws JsonException
+     */
+    public static function fromJsonString(string $json): self
     {
-        return new self(json_decode($json));
+        $event = json_decode($json, flags: JSON_THROW_ON_ERROR);
+        return new self($event);
     }
 }

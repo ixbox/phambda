@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace Phambda;
 
-use Exception;
+use JsonException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Throwable;
 
 class Worker implements WorkerInterface
 {
@@ -41,7 +42,7 @@ class Worker implements WorkerInterface
             );
 
             return new Invocation($event, $context);
-        } catch (ClientExceptionInterface $error) {
+        } catch (ClientExceptionInterface | JsonException $error) {
             $this->initError($error);
             exit(1);
         }
@@ -60,7 +61,7 @@ class Worker implements WorkerInterface
         }
     }
 
-    public function error(string $invocationId, Exception $error): void
+    public function error(string $invocationId, Throwable $error): void
     {
         try {
             $body = json_encode([
@@ -79,7 +80,7 @@ class Worker implements WorkerInterface
         }
     }
 
-    public function initError(Exception $error): void
+    public function initError(Throwable $error): void
     {
         try {
             $body = $this->streamFactory->createStream(json_encode([

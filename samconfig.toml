@@ -1,0 +1,8 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "php-app"
+resolve_s3 = true
+s3_prefix = "php-app"
+region = "ap-northeast-1"
+capabilities = "CAPABILITY_IAM"
+image_repositories = ["App=052473700685.dkr.ecr.ap-northeast-1.amazonaws.com/phpapp64547ea0/appac863f34repo"]

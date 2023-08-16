@@ -10,7 +10,7 @@ use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 
-class HttpWorker
+class HttpWorker implements HttpWorkerInterface
 {
     public function __construct(
         private readonly WorkerInterface $worker,
@@ -30,7 +30,7 @@ class HttpWorker
             $invocation->context->toArray(),
         );
         $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
-        foreach ($invocation->event->headers as $name => $value) {
+        foreach ((array) $invocation->event->headers as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
         $request = $request->withCookieParams((array) $invocation->event->cookies);
@@ -53,11 +53,13 @@ class HttpWorker
         $cookies = $response->getHeader('set-cookie');
         // headerから set-cookie を取り除く
         $headers = [];
+        $multiValueHeaders = [];
         foreach ($response->getHeaders() as $key => $value) {
+            $multiValueHeaders[$key] = $value;
             if (strtolower($key) === 'set-cookie') {
                 continue;
             }
-            $headers[$key] = count($value) === 1 ? $value[0] : $value;
+            $headers[$key] = join(', ', $value);
         }
         $body = $response->getBody()->getContents();
 
@@ -67,8 +69,9 @@ class HttpWorker
                 'statusCode' => $statusCode,
                 'statusDescription' => '',
                 'headers' => $headers,
-                'body' => $body,
                 'cookies' => $cookies,
+                'multiValueHeaders' => $multiValueHeaders,
+                'body' => $body,
             ]),
         );
     }

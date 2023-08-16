@@ -1,0 +1,30 @@
+#!/usr/bin/env php
+<?php
+
+require __DIR__ . '/vendor/autoload.php';
+
+$client = new GuzzleHttp\Client();
+$factory = new GuzzleHttp\Psr7\HttpFactory();
+$worker = new Phambda\Worker($client, $factory, $factory);
+$httpWorker = new Phambda\Http\HttpWorker($worker, $factory, $factory);
+
+$runtime = new Phambda\Http\Runtime(new class implements Psr\Http\Server\RequestHandlerInterface
+{
+    public function handle(Psr\Http\Message\ServerRequestInterface $request): Psr\Http\Message\ResponseInterface
+    {
+        return new GuzzleHttp\Psr7\Response(
+            headers: [
+                'Content-Type' => 'text/plain',
+                'Set-Cookie' => [
+                    'test1=1',
+                    'test2=2',
+                    'test3=3',
+                ],
+                'x-test' => 'test',
+            ],
+            body: "Hello World!",
+        );
+    }
+}, $httpWorker);
+
+$runtime->run();

@@ -12,17 +12,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
-      Events:
-        DynamicRequestsRoot:
-          Type: HttpApi
-          Properties:
-            Path: /
-            Method: ANY
-        DynamicRequestsProxy:
-          Type: HttpApi
-          Properties:
-            Path: /{proxy+}
-            Method: ANY
     Metadata:
       DockerTag: 1.0.0
       DockerContext: .

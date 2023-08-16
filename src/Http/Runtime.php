@@ -11,7 +11,7 @@ class Runtime implements RuntimeInterface
 {
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private readonly HttpWorker $worker,
+        private readonly HttpWorkerInterface $worker,
     ) {
     }
 
