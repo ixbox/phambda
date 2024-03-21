@@ -20,7 +20,8 @@ class Worker implements WorkerInterface
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
     ) {
-        $this->baseUri = 'http://' . getenv('AWS_LAMBDA_RUNTIME_API') . '/2018-06-01';
+        $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?? '127.0.0.1:9001';
+        $this->baseUri = "http://{$awsLambdaRuntimeApi}/2018-06-01";
     }
 
     public function nextInvocation(): Invocation

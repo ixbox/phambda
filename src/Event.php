@@ -4,32 +4,15 @@ declare(strict_types=1);
 
 namespace Phambda;
 
+use ArrayAccess;
+use Error;
 use JsonException;
-use stdClass;
 
-class Event
+class Event implements ArrayAccess
 {
     public function __construct(
-        private readonly stdClass $event,
+        private readonly array $event,
     ) {
-    }
-
-    public function __get(string $name): mixed
-    {
-        return $this->event->{$name} ?? null;
-    }
-
-    public function __isset(string $name): bool
-    {
-        return isset($this->event->{$name});
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    public function toArray(): array
-    {
-        return (array) $this->event;
     }
 
     /**
@@ -37,7 +20,27 @@ class Event
      */
     public static function fromJsonString(string $json): self
     {
-        $event = json_decode($json, flags: JSON_THROW_ON_ERROR);
+        $event = json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
         return new self($event);
+    }
+
+    public function offsetExists(mixed $offset): bool
+    {
+        return isset($this->event[$offset]);
+    }
+
+    public function offsetGet(mixed $offset): mixed
+    {
+        return $this->event[$offset] ?? null;
+    }
+
+    public function offsetSet(mixed $offset, mixed $value): void
+    {
+        throw new Error("Cannot modify readonly property");
+    }
+
+    public function offsetUnset(mixed $offset): void
+    {
+        throw new Error("Cannot modify readonly property");
     }
 }
