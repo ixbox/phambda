@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Phambda\Http;
 
+use Phambda\Factory\HttpWorkerFactory;
 use Phambda\RuntimeInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 
@@ -11,8 +12,9 @@ class Runtime implements RuntimeInterface
 {
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private readonly HttpWorkerInterface $worker,
+        private ?HttpWorkerInterface $worker,
     ) {
+        $this->worker ??= HttpWorkerFactory::create();
     }
 
     public function run(): void

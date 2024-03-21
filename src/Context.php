@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Phambda;
 
-class Context
+use JsonSerializable;
+
+class Context implements JsonSerializable
 {
     public function __construct(
         public readonly string $functionName,
@@ -18,10 +20,7 @@ class Context
     ) {
     }
 
-    /**
-     * @return array<string, string>
-     */
-    public function toArray(): array
+    public function jsonSerialize(): array
     {
         return [
             'functionName' => $this->functionName,

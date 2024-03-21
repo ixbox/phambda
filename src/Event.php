@@ -45,7 +45,7 @@ class Event implements ArrayAccess, JsonSerializable
         throw new Error("Cannot modify readonly property");
     }
 
-    public function jsonSerialize(): mixed
+    public function jsonSerialize(): array
     {
         return $this->event;
     }
