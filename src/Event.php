@@ -7,8 +7,9 @@ namespace Phambda;
 use ArrayAccess;
 use Error;
 use JsonException;
+use JsonSerializable;
 
-class Event implements ArrayAccess
+class Event implements ArrayAccess, JsonSerializable
 {
     public function __construct(
         private readonly array $event,
@@ -42,5 +43,10 @@ class Event implements ArrayAccess
     public function offsetUnset(mixed $offset): void
     {
         throw new Error("Cannot modify readonly property");
+    }
+
+    public function jsonSerialize(): mixed
+    {
+        return $this->event;
     }
 }
