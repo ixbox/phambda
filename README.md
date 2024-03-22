@@ -2,7 +2,7 @@
 
 ## Feature
 
-This package provides a runtime for PHP on AWS Lambda.
+This package provides simple way to implement function for PHP on AWS Lambda.
 
 ## Installation
 
@@ -21,8 +21,8 @@ composer require ixbox/phambda
 
 require __DIR__ . '/vendor/autoload.php';
 
-use GuzzleHttp\Psr7\Response;
-use Phambda\Http\Psr\Runtime;
+use Nyholm\Psr7\Response;
+use Phambda\Http\Runtime;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;

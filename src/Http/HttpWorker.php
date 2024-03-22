@@ -30,7 +30,7 @@ class HttpWorker implements HttpWorkerInterface
             $path,
             (array) $invocation->context,
         );
-        $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
+        $request = $request->withAttribute('awsRequestId', $invocation->context['awsRequestId']);
         foreach ((array) $invocation->event['headers'] as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
