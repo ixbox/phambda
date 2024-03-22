@@ -1,4 +1,19 @@
-# aws-lambda
+# PHP Runtime for AWS Lambda
+
+## Feature
+
+This package provides a runtime for PHP on AWS Lambda.
+
+## Installation
+
+```console
+composer require ixbox/phambda
+````
+
+## Dependencies
+- PHP 8.1 or later
+
+## Sample Implementation
 
 ```php
 #!/usr/bin/env php
@@ -21,8 +36,3 @@ $runtime = new Runtime($handler);
 $runtime->run();
 ```
 
-## example
-
-```
-sam build && sam local start-api
-```
