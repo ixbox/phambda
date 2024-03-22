@@ -2,7 +2,6 @@
 
 namespace Phambda\Factory;
 
-use GuzzleHttp\Psr7\ServerRequest;
 use Http\Factory\Discovery\HttpClient;
 use Http\Factory\Discovery\HttpFactory;
 use Phambda\Http\HttpWorker;
@@ -21,14 +20,14 @@ class HttpWorkerFactory
 {
     public static function create(
         ClientInterface $client = null,
+        ServerRequestFactoryInterface $serverRequestFactory = null,
         RequestFactoryInterface $requestFactory = null,
         StreamFactoryInterface $streamFactory = null,
-        ServerRequestFactoryInterface $serverRequestFactory = null,
     ): HttpWorkerInterface {
         $client ??= HttpClient::client();
+        $serverRequestFactory ??= HttpFactory::serverRequestFactory();
         $requestFactory ??= HttpFactory::requestFactory();
         $streamFactory ??= HttpFactory::streamFactory();
-        $serverRequestFactory ??= HttpFactory::serverRequestFactory();
 
         $worker = new Worker($client, $requestFactory, $streamFactory);
 
