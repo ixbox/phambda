@@ -1,6 +1,9 @@
 {
   "name": "ixbox/phambda",
   "description": "",
+  "license": [
+    "MIT"
+  ],
   "require": {
     "php": "^8.1",
     "php-http/discovery": "^1.17",
