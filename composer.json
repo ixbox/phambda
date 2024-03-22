@@ -3,11 +3,11 @@
   "description": "",
   "require": {
     "php": "^8.1",
+    "php-http/discovery": "^1.17",
+    "psr/container": "^2.0",
     "psr/http-client": "^1.0",
     "psr/http-factory": "^1.0",
-    "psr/http-server-handler": "^1.0",
-    "psr/container": "^2.0",
-    "http-interop/http-factory-discovery": "^1.6"
+    "psr/http-server-handler": "^1.0"
   },
   "autoload": {
     "psr-4": {
@@ -15,12 +15,18 @@
     }
   },
   "require-dev": {
-    "guzzlehttp/guzzle": "^7.7",
-    "friendsofphp/php-cs-fixer": "^3.52"
+    "friendsofphp/php-cs-fixer": "^3.52",
+    "guzzlehttp/guzzle": "^7.8",
+    "guzzlehttp/psr7": "^2.6"
   },
   "scripts": {
     "analyze": [
       "php vendor/bin/phpstan.phar analyse --level max src"
     ]
+  },
+  "config": {
+    "allow-plugins": {
+      "php-http/discovery": false
+    }
   }
 }

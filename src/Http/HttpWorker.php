@@ -22,21 +22,23 @@ class HttpWorker implements HttpWorkerInterface
     public function nextRequest(): ServerRequestInterface
     {
         $invocation = $this->worker->nextInvocation();
-        $method = $invocation->event->requestContext->http->method ?? $invocation->event->httpMethod;
-        $path = $invocation->event->requestContext->http->path ?? $invocation->event->path;
+
+        $method = isset($invocation->event['requestContext']) ? $invocation->event['requestContext']['http']['method'] : $invocation->event['httpMethod'];
+        $path = isset($invocation->event['requestContext']) ? $invocation->event['requestContext']['http']['path'] : $invocation->event['path'];
+        echo "Received next invocation {$method} {$path}\n";
         $request = $this->requestFactory->createServerRequest(
             $method,
             $path,
-            $invocation->context->toArray(),
+            (array) $invocation->context,
         );
         $request = $request->withAttribute('awsRequestId', $invocation->context->awsRequestId);
-        foreach ((array) $invocation->event->headers as $name => $value) {
+        foreach ((array) $invocation->event['headers'] as $name => $value) {
             $request = $request->withHeader($name, $value);
         }
-        $request = $request->withCookieParams((array) $invocation->event->cookies);
-        $request = $request->withQueryParams((array) $invocation->event->queryStringParameters);
-        if ($invocation->event->body) {
-            $request = $request->withBody($this->streamFactory->createStream($invocation->event->body));
+        $request = $request->withCookieParams((array) $invocation->event['cookies']);
+        $request = $request->withQueryParams((array) $invocation->event['queryStringParameters']);
+        if ($invocation->event['body']) {
+            $request = $request->withBody($this->streamFactory->createStream($invocation->event['body']));
         }
 
         return $request;

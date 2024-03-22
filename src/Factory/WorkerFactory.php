@@ -2,8 +2,8 @@
 
 namespace Phambda\Factory;
 
-use Http\Factory\Discovery\HttpClient;
-use Http\Factory\Discovery\HttpFactory;
+use Http\Discovery\Psr17Factory;
+use Http\Discovery\Psr18Client;
 use Phambda\Worker;
 use Phambda\WorkerInterface;
 use Psr\Container\ContainerExceptionInterface;
@@ -20,9 +20,11 @@ class WorkerFactory
         RequestFactoryInterface $requestFactory = null,
         StreamFactoryInterface $streamFactory = null,
     ): WorkerInterface {
-        $client ??= HttpClient::client();
-        $requestFactory ??= HttpFactory::requestFactory();
-        $streamFactory ??= HttpFactory::streamFactory();
+        $client ??= new Psr18Client();
+
+        $psr17Factory = new Psr17Factory();
+        $requestFactory ??= $psr17Factory;
+        $streamFactory ??= $psr17Factory;
 
         return new Worker($client, $requestFactory, $streamFactory);
     }

@@ -9,6 +9,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use RuntimeException;
 use Throwable;
 
 class Worker implements WorkerInterface
@@ -30,6 +31,10 @@ class Worker implements WorkerInterface
             $request = $this->requestFactory->createRequest('get', "{$this->baseUri}/runtime/invocation/next");
             $response = $this->client->sendRequest($request);
 
+            if ($response->getStatusCode() !== 200) {
+                throw new RuntimeException('Failed to fetch next invocation', $response->getStatusCode());
+            }
+
             $event = Event::fromJsonString($response->getBody()->getContents());
             $context = new Context(
                 functionName: getenv('AWS_LAMBDA_FUNCTION_NAME') ?: '',
@@ -43,7 +48,7 @@ class Worker implements WorkerInterface
             );
 
             return new Invocation($event, $context);
-        } catch (ClientExceptionInterface | JsonException $error) {
+        } catch (ClientExceptionInterface | JsonException | RuntimeException $error) {
             $this->initError($error);
             exit(1);
         }
@@ -56,8 +61,11 @@ class Worker implements WorkerInterface
                 ->createRequest('post', "{$this->baseUri}/runtime/invocation/{$invocationId}/response")
                 ->withBody($this->streamFactory->createStream($payload));
 
-            $this->client->sendRequest($request);
-        } catch (ClientExceptionInterface $error) {
+            $response = $this->client->sendRequest($request);
+            if ($response->getStatusCode() !== 202) {
+                throw new RuntimeException('Failed to respond to invocation', $response->getStatusCode());
+            }
+        } catch (ClientExceptionInterface | RuntimeException $error) {
             $this->error($invocationId, $error);
         }
     }

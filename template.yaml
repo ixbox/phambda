@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: Sample Template
-  
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -12,6 +12,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       PackageType: Image
+      Architectures:
+        - arm64
+      Events:
+        HelloWorld:
+          Type: HttpApi
+          Properties:
+            Path: /hello
+            Method: get
     Metadata:
       DockerTag: 1.0.0
       DockerContext: .

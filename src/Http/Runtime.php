@@ -12,7 +12,7 @@ class Runtime implements RuntimeInterface
 {
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private ?HttpWorkerInterface $worker,
+        private ?HttpWorkerInterface $worker = null,
     ) {
         $this->worker ??= HttpWorkerFactory::create();
     }
