@@ -2,7 +2,6 @@
 
 namespace Phambda\Factory;
 
-use Http\Discovery\Psr17Factory;
 use Http\Discovery\Psr18Client;
 use Phambda\Worker;
 use Phambda\WorkerInterface;
@@ -20,11 +19,11 @@ class WorkerFactory
         RequestFactoryInterface $requestFactory = null,
         StreamFactoryInterface $streamFactory = null,
     ): WorkerInterface {
-        $client ??= new Psr18Client();
+        $psr18client = new Psr18Client();
 
-        $psr17Factory = new Psr17Factory();
-        $requestFactory ??= $psr17Factory;
-        $streamFactory ??= $psr17Factory;
+        $client ??= $psr18client;
+        $requestFactory ??= $psr18client;
+        $streamFactory ??= $psr18client;
 
         return new Worker($client, $requestFactory, $streamFactory);
     }

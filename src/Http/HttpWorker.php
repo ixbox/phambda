@@ -25,7 +25,6 @@ class HttpWorker implements HttpWorkerInterface
 
         $method = isset($invocation->event['requestContext']) ? $invocation->event['requestContext']['http']['method'] : $invocation->event['httpMethod'];
         $path = isset($invocation->event['requestContext']) ? $invocation->event['requestContext']['http']['path'] : $invocation->event['path'];
-        echo "Received next invocation {$method} {$path}\n";
         $request = $this->requestFactory->createServerRequest(
             $method,
             $path,

@@ -3,19 +3,20 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
-$runtime = new \Phambda\Http\Runtime(new class implements \Psr\Http\Server\RequestHandlerInterface
-{
-    public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
-    {
-        $psr17Factory = new \Http\Discovery\Psr17Factory();
-        $response = $psr17Factory->createResponse();
-        $response = $response->withHeader('Content-Type', 'text/plain');
-        $response = $response->withHeader('Set-Cookie', ['test1=1', 'test2=2', 'test3=3']);
-        $response = $response->withHeader('x-test', 'test');
-        $response = $response->withBody($psr17Factory->createStream('Hello World!'));
+$runtime = new \Phambda\Http\Runtime(
+    new class implements \Psr\Http\Server\RequestHandlerInterface {
+        public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
+        {
+            $psr17Factory = new \Http\Discovery\Psr17Factory();
+            $response = $psr17Factory->createResponse();
+            $response = $response->withHeader('Content-Type', 'text/plain');
+            $response = $response->withHeader('Set-Cookie', ['test1=1', 'test2=2', 'test3=3']);
+            $response = $response->withHeader('x-test', 'test');
+            $response = $response->withBody($psr17Factory->createStream('Hello World!'));
 
-        return $response;
+            return $response;
+        }
     }
-});
+);
 
 $runtime->run();
