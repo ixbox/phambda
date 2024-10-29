@@ -28,4 +28,9 @@ class Runtime implements RuntimeInterface
             );
         } while (true);
     }
+
+    public static function execute(RequestHandlerInterface $handler): void
+    {
+        (new self($handler))->run();
+    }
 }

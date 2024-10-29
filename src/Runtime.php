@@ -34,4 +34,9 @@ class Runtime implements RuntimeInterface
             }
         }
     }
+
+    public static function execute(HandlerInterface $handler): void
+    {
+        (new self($handler))->run();
+    }
 }
