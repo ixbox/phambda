@@ -15,9 +15,9 @@ use Psr\Http\Message\StreamFactoryInterface;
 class WorkerFactory
 {
     public static function create(
-        ClientInterface $client = null,
-        RequestFactoryInterface $requestFactory = null,
-        StreamFactoryInterface $streamFactory = null,
+        ?ClientInterface $client = null,
+        ?RequestFactoryInterface $requestFactory = null,
+        ?StreamFactoryInterface $streamFactory = null,
     ): WorkerInterface {
         $psr18client = new Psr18Client();
 
