@@ -7,6 +7,8 @@ namespace Tests\Unit\Http;
 use Phambda\Context;
 use Phambda\Event;
 use Phambda\Http\HttpWorker;
+use Phambda\Http\RequestTransformerInterface;
+use Phambda\Http\ResponseTransformerInterface;
 use Phambda\Invocation;
 use Phambda\WorkerInterface;
 use PHPUnit\Framework\TestCase;
@@ -24,6 +26,8 @@ class HttpWorkerTest extends TestCase
     private ServerRequestInterface $request;
     private ResponseInterface $response;
     private StreamInterface $stream;
+    private RequestTransformerInterface $requestTransformer;
+    private ResponseTransformerInterface $responseTransformer;
     private HttpWorker $httpWorker;
 
     protected function setUp(): void
@@ -34,11 +38,16 @@ class HttpWorkerTest extends TestCase
         $this->request = $this->createMock(ServerRequestInterface::class);
         $this->response = $this->createMock(ResponseInterface::class);
         $this->stream = $this->createMock(StreamInterface::class);
+        $this->requestTransformer = $this->createMock(RequestTransformerInterface::class);
+        $this->responseTransformer = $this->createMock(ResponseTransformerInterface::class);
 
         $this->httpWorker = new HttpWorker(
             $this->worker,
             $this->requestFactory,
-            $this->streamFactory
+            $this->streamFactory,
+            null,
+            $this->requestTransformer,
+            $this->responseTransformer
         );
     }
 
@@ -76,25 +85,9 @@ class HttpWorkerTest extends TestCase
             ->willReturn($invocation);
 
         // RequestTransformerがイベントとコンテキストからリクエストを作成することを確認
-        $this->requestFactory->method('createServerRequest')
-            ->with('GET', '/api/test', (array)$context)
+        $this->requestTransformer->method('transform')
+            ->with($invocation->event, $invocation->context)
             ->willReturn($this->request);
-
-        $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
-
-        $this->request->method('withHeader')
-            ->with('content-type', 'application/json')
-            ->willReturnSelf();
-
-        $this->request->method('withCookieParams')
-            ->with(['session' => 'abc123'])
-            ->willReturnSelf();
-
-        $this->request->method('withQueryParams')
-            ->with(['param' => 'value'])
-            ->willReturnSelf();
 
         $result = $this->httpWorker->nextRequest();
         $this->assertSame($this->request, $result);
@@ -118,17 +111,23 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
-        $this->stream->method('isSeekable')
-            ->willReturn(true);
-        $this->stream->method('getContents')
-            ->willReturn('{"message":"success"}');
-        $this->stream->method('__toString')
-            ->willReturn('{"message":"success"}');
-
-        $this->response->method('getBody')
-            ->willReturn($this->stream);
-        $this->response->method('getReasonPhrase')
-            ->willReturn('');
+        $this->responseTransformer->method('transform')
+            ->with($this->response)
+            ->willReturn([
+                'statusCode' => 200,
+                'statusDescription' => '',
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'X-Request-Id' => 'abc123'
+                ],
+                'cookies' => [],
+                'multiValueHeaders' => [
+                    'Content-Type' => ['application/json'],
+                    'X-Request-Id' => ['abc123']
+                ],
+                'body' => '{"message":"success"}',
+                'isBase64Encoded' => false,
+            ]);
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -178,17 +177,22 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn($cookies);
 
-        $this->stream->method('isSeekable')
-            ->willReturn(true);
-        $this->stream->method('getContents')
-            ->willReturn('{"message":"success"}');
-        $this->stream->method('__toString')
-            ->willReturn('{"message":"success"}');
-
-        $this->response->method('getBody')
-            ->willReturn($this->stream);
-        $this->response->method('getReasonPhrase')
-            ->willReturn('');
+        $this->responseTransformer->method('transform')
+            ->with($this->response)
+            ->willReturn([
+                'statusCode' => 200,
+                'statusDescription' => '',
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ],
+                'cookies' => $cookies,
+                'multiValueHeaders' => [
+                    'Content-Type' => ['application/json'],
+                    'Set-Cookie' => $cookies
+                ],
+                'body' => '{"message":"success"}',
+                'isBase64Encoded' => false,
+            ]);
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -234,17 +238,31 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
-        $this->stream->method('isSeekable')
-            ->willReturn(true);
-        $this->stream->method('getContents')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
-        $this->stream->method('__toString')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->responseTransformer = $this->createMock(ResponseTransformerInterface::class);
+        $this->responseTransformer->method('transform')
+            ->with($this->response)
+            ->willReturn([
+                'statusCode' => $statusCode,
+                'statusDescription' => '',
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'cookies' => [],
+                'multiValueHeaders' => [
+                    'Content-Type' => ['application/json']
+                ],
+                'body' => '{"message":"status ' . $statusCode . '"}',
+                'isBase64Encoded' => false,
+            ]);
 
-        $this->response->method('getBody')
-            ->willReturn($this->stream);
-        $this->response->method('getReasonPhrase')
-            ->willReturn('');
+        $this->httpWorker = new HttpWorker(
+            $this->worker,
+            $this->requestFactory,
+            $this->streamFactory,
+            null,
+            null,
+            $this->responseTransformer
+        );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -289,17 +307,31 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
-        $this->stream->method('isSeekable')
-            ->willReturn(true);
-        $this->stream->method('getContents')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
-        $this->stream->method('__toString')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->responseTransformer = $this->createMock(ResponseTransformerInterface::class);
+        $this->responseTransformer->method('transform')
+            ->with($this->response)
+            ->willReturn([
+                'statusCode' => $statusCode,
+                'statusDescription' => '',
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'cookies' => [],
+                'multiValueHeaders' => [
+                    'Content-Type' => ['application/json']
+                ],
+                'body' => '{"message":"status ' . $statusCode . '"}',
+                'isBase64Encoded' => false,
+            ]);
 
-        $this->response->method('getBody')
-            ->willReturn($this->stream);
-        $this->response->method('getReasonPhrase')
-            ->willReturn('');
+        $this->httpWorker = new HttpWorker(
+            $this->worker,
+            $this->requestFactory,
+            $this->streamFactory,
+            null,
+            null,
+            $this->responseTransformer
+        );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -344,17 +376,31 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
-        $this->stream->method('isSeekable')
-            ->willReturn(true);
-        $this->stream->method('getContents')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
-        $this->stream->method('__toString')
-            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->responseTransformer = $this->createMock(ResponseTransformerInterface::class);
+        $this->responseTransformer->method('transform')
+            ->with($this->response)
+            ->willReturn([
+                'statusCode' => $statusCode,
+                'statusDescription' => '',
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'cookies' => [],
+                'multiValueHeaders' => [
+                    'Content-Type' => ['application/json']
+                ],
+                'body' => '{"message":"status ' . $statusCode . '"}',
+                'isBase64Encoded' => false,
+            ]);
 
-        $this->response->method('getBody')
-            ->willReturn($this->stream);
-        $this->response->method('getReasonPhrase')
-            ->willReturn('');
+        $this->httpWorker = new HttpWorker(
+            $this->worker,
+            $this->requestFactory,
+            $this->streamFactory,
+            null,
+            null,
+            $this->responseTransformer
+        );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認

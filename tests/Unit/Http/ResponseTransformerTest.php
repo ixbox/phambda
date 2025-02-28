@@ -37,11 +37,17 @@ class ResponseTransformerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"success"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"success"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         $result = $this->transformer->transform($this->response);
 
@@ -58,6 +64,7 @@ class ResponseTransformerTest extends TestCase
                 'X-Request-Id' => ['abc123']
             ],
             'body' => '{"message":"success"}',
+            'isBase64Encoded' => false,
         ];
 
         $this->assertEquals($expected, $result);
@@ -83,11 +90,17 @@ class ResponseTransformerTest extends TestCase
             ->with('set-cookie')
             ->willReturn($cookies);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"success"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"success"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         $result = $this->transformer->transform($this->response);
 
@@ -103,6 +116,7 @@ class ResponseTransformerTest extends TestCase
                 'Set-Cookie' => $cookies
             ],
             'body' => '{"message":"success"}',
+            'isBase64Encoded' => false,
         ];
 
         $this->assertEquals($expected, $result);
@@ -124,11 +138,17 @@ class ResponseTransformerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"success"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"success"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         $result = $this->transformer->transform($this->response);
 
@@ -147,6 +167,7 @@ class ResponseTransformerTest extends TestCase
                 'Vary' => ['Accept', 'Accept-Encoding']
             ],
             'body' => '{"message":"success"}',
+            'isBase64Encoded' => false,
         ];
 
         $this->assertEquals($expected, $result);
@@ -172,11 +193,17 @@ class ResponseTransformerTest extends TestCase
                 ->with('set-cookie')
                 ->willReturn([]);
 
+            $this->stream->method('isSeekable')
+                ->willReturn(true);
             $this->stream->method('getContents')
+                ->willReturn('{"message":"status ' . $statusCode . '"}');
+            $this->stream->method('__toString')
                 ->willReturn('{"message":"status ' . $statusCode . '"}');
 
             $this->response->method('getBody')
                 ->willReturn($this->stream);
+            $this->response->method('getReasonPhrase')
+                ->willReturn('');
 
             $result = $this->transformer->transform($this->response);
 
@@ -199,11 +226,17 @@ class ResponseTransformerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('');
+        $this->stream->method('__toString')
             ->willReturn('');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         $result = $this->transformer->transform($this->response);
 
@@ -218,6 +251,7 @@ class ResponseTransformerTest extends TestCase
                 'Content-Type' => ['application/json']
             ],
             'body' => '',
+            'isBase64Encoded' => false,
         ];
 
         $this->assertEquals($expected, $result);
@@ -239,11 +273,20 @@ class ResponseTransformerTest extends TestCase
             ->willReturn([]);
 
         $binaryContent = "\x00\x01\x02\x03\x04";
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn($binaryContent);
+        $this->stream->method('__toString')
             ->willReturn($binaryContent);
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
+        $this->response->method('getHeaderLine')
+            ->with('Content-Type')
+            ->willReturn('application/octet-stream');
 
         $result = $this->transformer->transform($this->response);
 
@@ -260,6 +303,7 @@ class ResponseTransformerTest extends TestCase
                 'Content-Disposition' => ['attachment; filename="file.bin"']
             ],
             'body' => $binaryContent,
+            'isBase64Encoded' => true,
         ];
 
         $this->assertEquals($expected, $result);

@@ -7,6 +7,8 @@ namespace Tests\Unit;
 use JsonException;
 use Phambda\Context;
 use Phambda\Event;
+use Phambda\Exception\InitializationException;
+use Phambda\Exception\RuntimeException;
 use Phambda\Invocation;
 use Phambda\Worker;
 use PHPUnit\Framework\TestCase;
@@ -17,7 +19,6 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
-use RuntimeException;
 
 class WorkerTest extends TestCase
 {
@@ -226,7 +227,7 @@ class WorkerTest extends TestCase
             ->willReturn($this->request);
 
         // レスポンスのモック設定
-        $this->response->expects($this->once())
+        $this->response->expects($this->atLeastOnce())
             ->method('getStatusCode')
             ->willReturn(500);
 
@@ -246,8 +247,8 @@ class WorkerTest extends TestCase
             ->with($this->isInstanceOf(RuntimeException::class));
 
         // 例外が発生することを期待
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Failed to fetch next invocation');
+        $this->expectException(InitializationException::class);
+        $this->expectExceptionMessage('Failed to get next invocation');
 
         // テスト実行
         $worker->nextInvocation();
@@ -280,7 +281,7 @@ class WorkerTest extends TestCase
             ->with($this->isInstanceOf(ClientExceptionInterface::class));
 
         // 例外が発生することを期待
-        $this->expectException(ClientExceptionInterface::class);
+        $this->expectException(InitializationException::class);
 
         // テスト実行
         $worker->nextInvocation();
@@ -324,7 +325,7 @@ class WorkerTest extends TestCase
             ->with($this->isInstanceOf(JsonException::class));
 
         // 例外が発生することを期待
-        $this->expectException(JsonException::class);
+        $this->expectException(InitializationException::class);
 
         // テスト実行
         $worker->nextInvocation();
@@ -389,7 +390,7 @@ class WorkerTest extends TestCase
             ->willReturnSelf();
 
         // レスポンスのモック設定
-        $this->response->expects($this->once())
+        $this->response->expects($this->atLeastOnce())
             ->method('getStatusCode')
             ->willReturn(500);
 
@@ -542,7 +543,7 @@ class WorkerTest extends TestCase
             ->with($this->isInstanceOf(ClientExceptionInterface::class));
 
         // 例外が発生することを期待
-        $this->expectException(ClientExceptionInterface::class);
+        $this->expectException(InitializationException::class);
 
         // テスト実行
         $worker->error($invocationId, $error);
@@ -619,18 +620,15 @@ class WorkerTest extends TestCase
             ->willReturnSelf();
 
         // クライアント例外のモック
-        $clientException = $this->createMock(ClientExceptionInterface::class);
-        $clientException->method('getMessage')->willReturn('Client error');
+        $clientException = $this->createStub(ClientExceptionInterface::class);
 
         $this->client->expects($this->once())
             ->method('sendRequest')
             ->with($this->request)
             ->willThrowException($clientException);
 
-        // error_logが呼ばれることを確認するためのモック
-        $this->expectOutputRegex('/Client error/');
-
         // テスト実行
+        $this->expectException(InitializationException::class);
         $this->worker->initError($error);
     }
 }
