@@ -22,7 +22,8 @@
     "nyholm/psr7": "^1.8",
     "php-http/curl-client": "^2.3",
     "phpunit/phpunit": "^11.0",
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "rector/rector": "^2.0"
   },
   "scripts": {
     "analyze": [

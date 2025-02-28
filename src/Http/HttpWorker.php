@@ -17,12 +17,7 @@ class HttpWorker implements HttpWorkerInterface
     /**
      * @var RequestTransformerInterface
      */
-    private RequestTransformerInterface $requestTransformer;
-
-    /**
-     * @var ResponseTransformerInterface
-     */
-    private ResponseTransformerInterface $responseTransformer;
+    private readonly RequestTransformerInterface $requestTransformer;
 
     public function __construct(
         private readonly WorkerInterface $worker,
@@ -30,10 +25,9 @@ class HttpWorker implements HttpWorkerInterface
         private readonly StreamFactoryInterface $streamFactory,
         private readonly ?LoggerInterface $logger = null,
         ?RequestTransformerInterface $requestTransformer = null,
-        ?ResponseTransformerInterface $responseTransformer = null,
+        private readonly ResponseTransformerInterface $responseTransformer = new ResponseTransformer(),
     ) {
         $this->requestTransformer = $requestTransformer ?? new RequestTransformer($requestFactory, $streamFactory);
-        $this->responseTransformer = $responseTransformer ?? new ResponseTransformer();
     }
 
     /**

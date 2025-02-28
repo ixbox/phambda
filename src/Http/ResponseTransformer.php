@@ -21,8 +21,8 @@ class ResponseTransformer implements ResponseTransformerInterface
     {
         if (!$response instanceof ResponseInterface) {
             throw TransformationException::forResponse(
-                'Expected ResponseInterface instance, got ' . (is_object($response) ? get_class($response) : gettype($response)),
-                ['response_type' => is_object($response) ? get_class($response) : gettype($response)]
+                'Expected ResponseInterface instance, got ' . (get_debug_type($response)),
+                ['response_type' => get_debug_type($response)]
             );
         }
 
@@ -38,7 +38,7 @@ class ResponseTransformer implements ResponseTransformerInterface
                 if (strtolower($key) === 'set-cookie') {
                     continue;
                 }
-                $headers[$key] = join(', ', $value);
+                $headers[$key] = implode(', ', $value);
             }
 
             // Get the body content, rewinding the stream if needed

@@ -13,7 +13,7 @@ class Runtime implements RuntimeInterface
 {
     public function __construct(
         private readonly HandlerInterface $handler,
-        private ?LoggerInterface $logger = null,
+        private readonly ?LoggerInterface $logger = null,
         private ?Worker $worker = null,
     ) {
         $this->logger?->info('Creating Runtime instance');

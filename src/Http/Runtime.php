@@ -17,7 +17,7 @@ class Runtime implements RuntimeInterface
 {
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private ?LoggerInterface $logger = null,
+        private readonly ?LoggerInterface $logger = null,
         private ?HttpWorkerInterface $worker = null,
     ) {
         $logger?->info('Creating HTTP runtime');
@@ -101,7 +101,7 @@ class Runtime implements RuntimeInterface
         $errorData = [
             'error' => $error->getMessage(),
             'code' => $error->getCode(),
-            'type' => get_class($error),
+            'type' => $error::class,
         ];
 
         // If it's a PhambdaException, include context information

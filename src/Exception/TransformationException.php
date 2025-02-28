@@ -10,11 +10,6 @@ namespace Phambda\Exception;
 class TransformationException extends PhambdaException
 {
     /**
-     * @var string The type of transformation that failed (e.g., 'request', 'response')
-     */
-    private string $transformationType;
-
-    /**
      * @param string $message Error message
      * @param string $transformationType Type of transformation that failed
      * @param int $code Error code
@@ -22,13 +17,12 @@ class TransformationException extends PhambdaException
      */
     public function __construct(
         string $message,
-        string $transformationType = '',
+        private readonly string $transformationType = '',
         int $code = 0,
         ?\Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
-        $this->transformationType = $transformationType;
-        $this->addContext('transformation_type', $transformationType);
+        $this->addContext('transformation_type', $this->transformationType);
     }
 
     /**

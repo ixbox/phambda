@@ -16,7 +16,8 @@ class RequestTransformer implements RequestTransformerInterface
     public function __construct(
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
-    ) {}
+    ) {
+    }
 
     /**
      * {@inheritdoc}
@@ -30,15 +31,15 @@ class RequestTransformer implements RequestTransformerInterface
     {
         if (!$event instanceof Event) {
             throw TransformationException::forRequest(
-                'Expected Event instance, got ' . (is_object($event) ? get_class($event) : gettype($event)),
-                ['event_type' => is_object($event) ? get_class($event) : gettype($event)]
+                'Expected Event instance, got ' . (get_debug_type($event)),
+                ['event_type' => get_debug_type($event)]
             );
         }
 
         if (!$context instanceof Context) {
             throw TransformationException::forRequest(
-                'Expected Context instance, got ' . (is_object($context) ? get_class($context) : gettype($context)),
-                ['context_type' => is_object($context) ? get_class($context) : gettype($context)]
+                'Expected Context instance, got ' . (get_debug_type($context)),
+                ['context_type' => get_debug_type($context)]
             );
         }
 

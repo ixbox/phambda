@@ -21,7 +21,7 @@ class Worker implements WorkerInterface
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private ?string $baseUri = null,
-        private ?LoggerInterface $logger = null,
+        private readonly ?LoggerInterface $logger = null,
     ) {
         $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?: '127.0.0.1:9001';
         $this->baseUri ??= "http://{$awsLambdaRuntimeApi}/2018-06-01";
@@ -94,7 +94,7 @@ class Worker implements WorkerInterface
             $this->logger?->info('Sending error response for invocation: ' . $invocationId);
             $body = json_encode([
                 'errorMessage' => $error->getMessage(),
-                'errorType' => get_class($error),
+                'errorType' => $error::class,
             ]);
 
             $request = $this->requestFactory
@@ -117,7 +117,7 @@ class Worker implements WorkerInterface
         try {
             $body = $this->streamFactory->createStream(json_encode([
                 'errorMessage' => $error->getMessage(),
-                'errorType' => get_class($error),
+                'errorType' => $error::class,
             ]));
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/init/error")
