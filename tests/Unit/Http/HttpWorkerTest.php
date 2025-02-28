@@ -34,7 +34,7 @@ class HttpWorkerTest extends TestCase
         $this->request = $this->createMock(ServerRequestInterface::class);
         $this->response = $this->createMock(ResponseInterface::class);
         $this->stream = $this->createMock(StreamInterface::class);
-        
+
         $this->httpWorker = new HttpWorker(
             $this->worker,
             $this->requestFactory,
@@ -118,11 +118,17 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"success"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"success"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -139,6 +145,7 @@ class HttpWorkerTest extends TestCase
                 'X-Request-Id' => ['abc123']
             ],
             'body' => '{"message":"success"}',
+            'isBase64Encoded' => false,
         ]);
 
         $this->worker->expects($this->once())
@@ -171,11 +178,17 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn($cookies);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"success"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"success"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -191,6 +204,7 @@ class HttpWorkerTest extends TestCase
                 'Set-Cookie' => $cookies
             ],
             'body' => '{"message":"success"}',
+            'isBase64Encoded' => false,
         ]);
 
         $this->worker->expects($this->once())
@@ -220,11 +234,17 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"status ' . $statusCode . '"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -239,6 +259,7 @@ class HttpWorkerTest extends TestCase
                 'Content-Type' => ['application/json']
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
+            'isBase64Encoded' => false,
         ]);
 
         $this->worker->expects($this->once())
@@ -268,11 +289,17 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"status ' . $statusCode . '"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -287,6 +314,7 @@ class HttpWorkerTest extends TestCase
                 'Content-Type' => ['application/json']
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
+            'isBase64Encoded' => false,
         ]);
 
         $this->worker->expects($this->once())
@@ -316,11 +344,17 @@ class HttpWorkerTest extends TestCase
             ->with('set-cookie')
             ->willReturn([]);
 
+        $this->stream->method('isSeekable')
+            ->willReturn(true);
         $this->stream->method('getContents')
+            ->willReturn('{"message":"status ' . $statusCode . '"}');
+        $this->stream->method('__toString')
             ->willReturn('{"message":"status ' . $statusCode . '"}');
 
         $this->response->method('getBody')
             ->willReturn($this->stream);
+        $this->response->method('getReasonPhrase')
+            ->willReturn('');
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
         // WorkerInterfaceのrespondメソッドに渡されることを確認
@@ -335,6 +369,7 @@ class HttpWorkerTest extends TestCase
                 'Content-Type' => ['application/json']
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
+            'isBase64Encoded' => false,
         ]);
 
         $this->worker->expects($this->once())
