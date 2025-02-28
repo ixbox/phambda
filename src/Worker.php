@@ -9,6 +9,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
 
@@ -19,9 +20,11 @@ class Worker implements WorkerInterface
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private ?string $baseUri = null,
+        private ?LoggerInterface $logger = null,
     ) {
-        $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?? '127.0.0.1:9001';
+        $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?: '127.0.0.1:9001';
         $this->baseUri ??= "http://{$awsLambdaRuntimeApi}/2018-06-01";
+        $this->logger?->info('Using base URI: ' . $this->baseUri);
     }
 
     public function nextInvocation(): Invocation
@@ -30,6 +33,7 @@ class Worker implements WorkerInterface
             $request = $this->requestFactory->createRequest('GET', "{$this->baseUri}/runtime/invocation/next");
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 200) {
+                $this->logger?->warning('Received non-200 response: ' . $response->getStatusCode());
                 throw new RuntimeException('Failed to fetch next invocation', $response->getStatusCode());
             }
 
@@ -101,7 +105,7 @@ class Worker implements WorkerInterface
 
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
-            error_log($error->getMessage());
+            $this->logger?->critical($error->getMessage());
             exit(1);
         }
     }

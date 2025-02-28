@@ -18,10 +18,10 @@ use Psr\Http\Message\StreamFactoryInterface;
 class HttpWorkerFactory
 {
     public static function create(
-        ClientInterface $client = null,
-        ServerRequestFactoryInterface $serverRequestFactory = null,
-        RequestFactoryInterface $requestFactory = null,
-        StreamFactoryInterface $streamFactory = null,
+        ?ClientInterface $client = null,
+        ?ServerRequestFactoryInterface $serverRequestFactory = null,
+        ?RequestFactoryInterface $requestFactory = null,
+        ?StreamFactoryInterface $streamFactory = null,
     ): HttpWorkerInterface {
         $psr18client = new Psr18Client();
 
