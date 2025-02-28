@@ -32,8 +32,10 @@ class HttpWorkerFactory
         $requestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
 
+        $logger?->info('Creating Worker');
         $worker = new Worker($client, $requestFactory, $streamFactory, null, $logger);
 
+        $logger?->info('Creating HttpWorker');
         return new HttpWorker($worker, $serverRequestFactory, $streamFactory, $logger);
     }
 

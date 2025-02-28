@@ -21,6 +21,7 @@ class WorkerFactory
         ?StreamFactoryInterface $streamFactory = null,
         ?LoggerInterface $logger = null,
     ): WorkerInterface {
+        $logger?->info('Creating Worker');
         $psr18client = new Psr18Client();
 
         $client ??= $psr18client;

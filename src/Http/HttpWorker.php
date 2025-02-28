@@ -24,10 +24,18 @@ class HttpWorker implements HttpWorkerInterface
 
     public function nextRequest(): ServerRequestInterface
     {
+        $this->logger?->debug('Transforming Lambda event to HTTP request');
         $invocation = $this->worker->nextInvocation();
         $transformer = new RequestTransformer($this->requestFactory, $this->streamFactory);
 
-        return $transformer->transform($invocation->event, $invocation->context);
+        $request = $transformer->transform($invocation->event, $invocation->context);
+        $this->logger?->info(sprintf(
+            'Received HTTP request: %s %s',
+            $request->getMethod(),
+            $request->getUri()->getPath()
+        ));
+
+        return $request;
     }
 
     /**
@@ -36,9 +44,15 @@ class HttpWorker implements HttpWorkerInterface
      */
     public function respond(string $awsInvocationId, ResponseInterface $response): void
     {
+        $this->logger?->debug('Transforming HTTP response to Lambda response');
         $transformer = new ResponseTransformer();
         $responsePayload = $transformer->transform($response);
 
+        $this->logger?->info(sprintf(
+            'Sending HTTP response: %d %s',
+            $response->getStatusCode(),
+            $response->getReasonPhrase()
+        ));
         $this->worker->respond($awsInvocationId, json_encode($responsePayload));
     }
 }

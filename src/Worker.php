@@ -30,6 +30,7 @@ class Worker implements WorkerInterface
     public function nextInvocation(): Invocation
     {
         try {
+            $this->logger?->debug('Fetching next invocation');
             $request = $this->requestFactory->createRequest('GET', "{$this->baseUri}/runtime/invocation/next");
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 200) {
@@ -49,6 +50,7 @@ class Worker implements WorkerInterface
                 deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms') ?? '',
             );
 
+            $this->logger?->info('Received invocation: Request ID ' . $context->awsRequestId);
             return new Invocation($event, $context);
         } catch (ClientExceptionInterface | JsonException | RuntimeException $error) {
             $this->initError($error);
@@ -59,6 +61,7 @@ class Worker implements WorkerInterface
     public function respond(string $invocationId, string $payload): void
     {
         try {
+            $this->logger?->debug('Sending invocation response: ' . $invocationId);
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/response")
                 ->withBody($this->streamFactory->createStream($payload));
@@ -68,6 +71,7 @@ class Worker implements WorkerInterface
                 throw new RuntimeException('Failed to respond to invocation', $response->getStatusCode());
             }
         } catch (ClientExceptionInterface | RuntimeException $error) {
+            $this->logger?->error('Failed to send response: ' . $error->getMessage());
             $this->error($invocationId, $error);
         }
     }
@@ -75,6 +79,7 @@ class Worker implements WorkerInterface
     public function error(string $invocationId, Throwable $error): void
     {
         try {
+            $this->logger?->info('Sending error response for invocation: ' . $invocationId);
             $body = json_encode([
                 'errorMessage' => $error->getMessage(),
                 'errorType' => get_class($error),
