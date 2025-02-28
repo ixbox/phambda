@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace Phambda;
 
 use JsonException;
+use Phambda\Exception\InitializationException;
+use Phambda\Exception\RuntimeException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
-use RuntimeException;
 use Throwable;
 
 class Worker implements WorkerInterface
@@ -35,7 +36,10 @@ class Worker implements WorkerInterface
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 200) {
                 $this->logger?->warning('Received non-200 response: ' . $response->getStatusCode());
-                throw new RuntimeException('Failed to fetch next invocation', $response->getStatusCode());
+                throw new RuntimeException(
+                    'Failed to fetch next invocation',
+                    $response->getStatusCode()
+                );
             }
 
             $event = Event::fromJsonString($response->getBody()->getContents());
@@ -54,7 +58,11 @@ class Worker implements WorkerInterface
             return new Invocation($event, $context);
         } catch (ClientExceptionInterface | JsonException | RuntimeException $error) {
             $this->initError($error);
-            exit(1);
+            throw InitializationException::fromEnvironment(
+                'Failed to get next invocation: ' . $error->getMessage(),
+                0,
+                $error
+            );
         }
     }
 
@@ -68,7 +76,11 @@ class Worker implements WorkerInterface
 
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 202) {
-                throw new RuntimeException('Failed to respond to invocation', $response->getStatusCode());
+                throw RuntimeException::forInvocation(
+                    'Failed to respond to invocation',
+                    $invocationId,
+                    $response->getStatusCode()
+                );
             }
         } catch (ClientExceptionInterface | RuntimeException $error) {
             $this->logger?->error('Failed to send response: ' . $error->getMessage());
@@ -92,7 +104,11 @@ class Worker implements WorkerInterface
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
             $this->initError($error);
-            exit(1);
+            throw InitializationException::fromEnvironment(
+                'Failed to send error response: ' . $error->getMessage(),
+                0,
+                $error
+            );
         }
     }
 
@@ -111,7 +127,11 @@ class Worker implements WorkerInterface
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
             $this->logger?->critical($error->getMessage());
-            exit(1);
+            throw InitializationException::fromEnvironment(
+                'Failed to send initialization error: ' . $error->getMessage(),
+                0,
+                $error
+            );
         }
     }
 }

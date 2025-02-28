@@ -17,14 +17,14 @@ $runtime = new \Phambda\Http\Runtime(
             );
         }
     },
-    // new class extends \Psr\Log\AbstractLogger {
-    //     public function log($level, $message, array $context = []): void
-    //     {
-    //         if ($level === 'debug') {
-    //             return;
-    //         }
-    //         error_log(sprintf("time:%s\tlevel:%s\tmessage:%s", date('c'), $level, $message));
-    //     }
-    // },
+    new class extends \Psr\Log\AbstractLogger {
+        public function log($level, $message, array $context = []): void
+        {
+            if ($level === 'debug') {
+                return;
+            }
+            error_log(sprintf("time:%s\tlevel:%s\tmessage:%s", date('c'), $level, $message));
+        }
+    },
 );
 $runtime->run();

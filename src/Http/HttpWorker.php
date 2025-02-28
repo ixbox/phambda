@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace Phambda\Http;
 
+use Phambda\Exception\TransformationException;
 use Phambda\WorkerInterface;
 use Psr\Http\Message\ResponseInterface;
-use Phambda\Http\RequestTransformer;
-use Phambda\Http\ResponseTransformer;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
@@ -15,21 +14,40 @@ use Psr\Log\LoggerInterface;
 
 class HttpWorker implements HttpWorkerInterface
 {
+    /**
+     * @var RequestTransformerInterface
+     */
+    private RequestTransformerInterface $requestTransformer;
+
+    /**
+     * @var ResponseTransformerInterface
+     */
+    private ResponseTransformerInterface $responseTransformer;
+
     public function __construct(
         private readonly WorkerInterface $worker,
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly ?LoggerInterface $logger = null,
+        ?RequestTransformerInterface $requestTransformer = null,
+        ?ResponseTransformerInterface $responseTransformer = null,
     ) {
+        $this->requestTransformer = $requestTransformer ?? new RequestTransformer($requestFactory, $streamFactory);
+        $this->responseTransformer = $responseTransformer ?? new ResponseTransformer();
     }
 
+    /**
+     * Get the next HTTP request from the Lambda runtime.
+     *
+     * @return ServerRequestInterface
+     * @throws TransformationException If the event cannot be transformed to a request
+     */
     public function nextRequest(): ServerRequestInterface
     {
         $this->logger?->debug('Transforming Lambda event to HTTP request');
         $invocation = $this->worker->nextInvocation();
-        $transformer = new RequestTransformer($this->requestFactory, $this->streamFactory);
 
-        $request = $transformer->transform($invocation->event, $invocation->context);
+        $request = $this->requestTransformer->transform($invocation->event, $invocation->context);
         $this->logger?->info(sprintf(
             'Received HTTP request: %s %s',
             $request->getMethod(),
@@ -40,14 +58,16 @@ class HttpWorker implements HttpWorkerInterface
     }
 
     /**
+     * Send an HTTP response back to the Lambda runtime.
+     *
      * @param string $awsInvocationId
      * @param ResponseInterface $response
+     * @throws TransformationException If the response cannot be transformed
      */
     public function respond(string $awsInvocationId, ResponseInterface $response): void
     {
         $this->logger?->debug('Transforming HTTP response to Lambda response');
-        $transformer = new ResponseTransformer();
-        $responsePayload = $transformer->transform($response);
+        $responsePayload = $this->responseTransformer->transform($response);
 
         $this->logger?->info(sprintf(
             'Sending HTTP response: %d %s',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Phambda;
 
+use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\WorkerFactory;
 use Psr\Log\LoggerInterface;
@@ -34,9 +35,27 @@ class Runtime implements RuntimeInterface
                     $invocation->context->awsRequestId,
                     $result,
                 );
-            } catch (RuntimeException $error) {
+            } catch (PhambdaException $error) {
                 $this->logger?->error('Error occurred while processing invocation: ' . $error->getMessage());
+
+                // Add context information if not already present
+                if ($error instanceof RuntimeException && !$error->getInvocationId()) {
+                    $error->setInvocationId($invocation->context->awsRequestId);
+                }
+
                 $this->worker->error($invocation->context->awsRequestId, $error);
+            } catch (\Throwable $error) {
+                $this->logger?->error('Unexpected error: ' . $error->getMessage());
+
+                // Wrap non-Phambda exceptions
+                $runtimeError = RuntimeException::forInvocation(
+                    $error->getMessage(),
+                    $invocation->context->awsRequestId,
+                    $error->getCode(),
+                    $error
+                );
+
+                $this->worker->error($invocation->context->awsRequestId, $runtimeError);
             }
         }
     }
