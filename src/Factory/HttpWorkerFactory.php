@@ -14,6 +14,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Log\LoggerInterface;
 
 class HttpWorkerFactory
 {
@@ -22,6 +23,7 @@ class HttpWorkerFactory
         ?ServerRequestFactoryInterface $serverRequestFactory = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
+        ?LoggerInterface $logger = null,
     ): HttpWorkerInterface {
         $psr18client = new Psr18Client();
 
@@ -30,9 +32,9 @@ class HttpWorkerFactory
         $requestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
 
-        $worker = new Worker($client, $requestFactory, $streamFactory);
+        $worker = new Worker($client, $requestFactory, $streamFactory, null, $logger);
 
-        return new HttpWorker($worker, $serverRequestFactory, $streamFactory);
+        return new HttpWorker($worker, $serverRequestFactory, $streamFactory, $logger);
     }
 
     /**

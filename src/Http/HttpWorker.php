@@ -11,6 +11,7 @@ use Phambda\Http\ResponseTransformer;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Log\LoggerInterface;
 
 class HttpWorker implements HttpWorkerInterface
 {
@@ -18,8 +19,8 @@ class HttpWorker implements HttpWorkerInterface
         private readonly WorkerInterface $worker,
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
-    ) {
-    }
+        private readonly ?LoggerInterface $logger = null,
+    ) {}
 
     public function nextRequest(): ServerRequestInterface
     {

@@ -11,6 +11,7 @@ use Psr\Container\NotFoundExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
+use Psr\Log\LoggerInterface;
 
 class WorkerFactory
 {
@@ -18,6 +19,7 @@ class WorkerFactory
         ?ClientInterface $client = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
+        ?LoggerInterface $logger = null,
     ): WorkerInterface {
         $psr18client = new Psr18Client();
 
@@ -25,7 +27,7 @@ class WorkerFactory
         $requestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
 
-        return new Worker($client, $requestFactory, $streamFactory);
+        return new Worker($client, $requestFactory, $streamFactory, null, $logger);
     }
 
     /**
@@ -38,6 +40,8 @@ class WorkerFactory
             $container->get(ClientInterface::class),
             $container->get(RequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
+            null,
+            $container->get(LoggerInterface::class),
         );
     }
 }
