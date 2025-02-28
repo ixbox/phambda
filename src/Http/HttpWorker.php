@@ -20,7 +20,8 @@ class HttpWorker implements HttpWorkerInterface
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly ?LoggerInterface $logger = null,
-    ) {}
+    ) {
+    }
 
     public function nextRequest(): ServerRequestInterface
     {
