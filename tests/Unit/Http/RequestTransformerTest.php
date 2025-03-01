@@ -27,7 +27,7 @@ class RequestTransformerTest extends TestCase
         $this->streamFactory = $this->createMock(StreamFactoryInterface::class);
         $this->request = $this->createMock(ServerRequestInterface::class);
         $this->stream = $this->createMock(StreamInterface::class);
-        
+
         $this->transformer = new RequestTransformer($this->requestFactory, $this->streamFactory);
     }
 
@@ -37,15 +37,15 @@ class RequestTransformerTest extends TestCase
             'requestContext' => [
                 'http' => [
                     'method' => 'POST',
-                    'path' => '/api/test'
-                ]
+                    'path' => '/api/test',
+                ],
             ],
             'headers' => [
-                'content-type' => 'application/json'
+                'content-type' => 'application/json',
             ],
             'cookies' => ['session' => 'abc123'],
             'queryStringParameters' => ['param' => 'value'],
-            'body' => '{"test":"data"}'
+            'body' => '{"test":"data"}',
         ]);
 
         $context = new Context(
@@ -97,11 +97,11 @@ class RequestTransformerTest extends TestCase
             'httpMethod' => 'GET',
             'path' => '/api/resource',
             'headers' => [
-                'accept' => 'application/json'
+                'accept' => 'application/json',
             ],
             'cookies' => ['session' => 'xyz789'],
             'queryStringParameters' => ['filter' => 'active'],
-            'body' => null
+            'body' => null,
         ]);
 
         $context = new Context(
@@ -149,13 +149,13 @@ class RequestTransformerTest extends TestCase
             'requestContext' => [
                 'http' => [
                     'method' => 'DELETE',
-                    'path' => '/api/resource/123'
-                ]
+                    'path' => '/api/resource/123',
+                ],
             ],
             'headers' => [],
             'cookies' => [],
             'queryStringParameters' => [],
-            'body' => ''
+            'body' => '',
         ]);
 
         $context = new Context(
@@ -201,17 +201,17 @@ class RequestTransformerTest extends TestCase
             'requestContext' => [
                 'http' => [
                     'method' => 'PUT',
-                    'path' => '/api/update'
-                ]
+                    'path' => '/api/update',
+                ],
             ],
             'headers' => [
                 'content-type' => 'application/json',
                 'authorization' => 'Bearer token123',
-                'x-api-key' => 'abc123'
+                'x-api-key' => 'abc123',
             ],
             'cookies' => ['session' => 'def456'],
             'queryStringParameters' => ['id' => '123'],
-            'body' => '{"name":"updated"}'
+            'body' => '{"name":"updated"}',
         ]);
 
         $context = new Context(
@@ -274,13 +274,13 @@ class RequestTransformerTest extends TestCase
             'requestContext' => [
                 'http' => [
                     'method' => 'GET',
-                    'path' => '/api/test'
-                ]
+                    'path' => '/api/test',
+                ],
             ],
             'headers' => null,
             'cookies' => null,
             'queryStringParameters' => null,
-            'body' => null
+            'body' => null,
         ]);
 
         $context = new Context(

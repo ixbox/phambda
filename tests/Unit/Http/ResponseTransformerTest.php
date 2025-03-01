@@ -30,7 +30,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getHeaders')
             ->willReturn([
                 'Content-Type' => ['application/json'],
-                'X-Request-Id' => ['abc123']
+                'X-Request-Id' => ['abc123'],
             ]);
 
         $this->response->method('getHeader')
@@ -56,12 +56,12 @@ class ResponseTransformerTest extends TestCase
             'statusDescription' => '',
             'headers' => [
                 'Content-Type' => 'application/json',
-                'X-Request-Id' => 'abc123'
+                'X-Request-Id' => 'abc123',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
                 'Content-Type' => ['application/json'],
-                'X-Request-Id' => ['abc123']
+                'X-Request-Id' => ['abc123'],
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
@@ -77,13 +77,13 @@ class ResponseTransformerTest extends TestCase
 
         $cookies = [
             'session=abc123; Path=/; HttpOnly',
-            'preference=dark; Path=/; Max-Age=31536000'
+            'preference=dark; Path=/; Max-Age=31536000',
         ];
 
         $this->response->method('getHeaders')
             ->willReturn([
                 'Content-Type' => ['application/json'],
-                'Set-Cookie' => $cookies
+                'Set-Cookie' => $cookies,
             ]);
 
         $this->response->method('getHeader')
@@ -113,7 +113,7 @@ class ResponseTransformerTest extends TestCase
             'cookies' => $cookies,
             'multiValueHeaders' => [
                 'Content-Type' => ['application/json'],
-                'Set-Cookie' => $cookies
+                'Set-Cookie' => $cookies,
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
@@ -131,7 +131,7 @@ class ResponseTransformerTest extends TestCase
             ->willReturn([
                 'Content-Type' => ['application/json'],
                 'Cache-Control' => ['no-cache', 'no-store', 'must-revalidate'],
-                'Vary' => ['Accept', 'Accept-Encoding']
+                'Vary' => ['Accept', 'Accept-Encoding'],
             ]);
 
         $this->response->method('getHeader')
@@ -158,13 +158,13 @@ class ResponseTransformerTest extends TestCase
             'headers' => [
                 'Content-Type' => 'application/json',
                 'Cache-Control' => 'no-cache, no-store, must-revalidate',
-                'Vary' => 'Accept, Accept-Encoding'
+                'Vary' => 'Accept, Accept-Encoding',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
                 'Content-Type' => ['application/json'],
                 'Cache-Control' => ['no-cache', 'no-store', 'must-revalidate'],
-                'Vary' => ['Accept', 'Accept-Encoding']
+                'Vary' => ['Accept', 'Accept-Encoding'],
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
@@ -186,7 +186,7 @@ class ResponseTransformerTest extends TestCase
 
             $this->response->method('getHeaders')
                 ->willReturn([
-                    'Content-Type' => ['application/json']
+                    'Content-Type' => ['application/json'],
                 ]);
 
             $this->response->method('getHeader')
@@ -219,7 +219,7 @@ class ResponseTransformerTest extends TestCase
 
         $this->response->method('getHeaders')
             ->willReturn([
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ]);
 
         $this->response->method('getHeader')
@@ -244,11 +244,11 @@ class ResponseTransformerTest extends TestCase
             'statusCode' => 204,
             'statusDescription' => '',
             'headers' => [
-                'Content-Type' => 'application/json'
+                'Content-Type' => 'application/json',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ],
             'body' => '',
             'isBase64Encoded' => false,
@@ -265,7 +265,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getHeaders')
             ->willReturn([
                 'Content-Type' => ['application/octet-stream'],
-                'Content-Disposition' => ['attachment; filename="file.bin"']
+                'Content-Disposition' => ['attachment; filename="file.bin"'],
             ]);
 
         $this->response->method('getHeader')
@@ -295,12 +295,12 @@ class ResponseTransformerTest extends TestCase
             'statusDescription' => '',
             'headers' => [
                 'Content-Type' => 'application/octet-stream',
-                'Content-Disposition' => 'attachment; filename="file.bin"'
+                'Content-Disposition' => 'attachment; filename="file.bin"',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
                 'Content-Type' => ['application/octet-stream'],
-                'Content-Disposition' => ['attachment; filename="file.bin"']
+                'Content-Disposition' => ['attachment; filename="file.bin"'],
             ],
             'body' => $binaryContent,
             'isBase64Encoded' => true,

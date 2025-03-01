@@ -57,15 +57,15 @@ class HttpWorkerTest extends TestCase
             'requestContext' => [
                 'http' => [
                     'method' => 'GET',
-                    'path' => '/api/test'
-                ]
+                    'path' => '/api/test',
+                ],
             ],
             'headers' => [
-                'content-type' => 'application/json'
+                'content-type' => 'application/json',
             ],
             'cookies' => ['session' => 'abc123'],
             'queryStringParameters' => ['param' => 'value'],
-            'body' => null
+            'body' => null,
         ]);
 
         $context = new Context(
@@ -104,7 +104,7 @@ class HttpWorkerTest extends TestCase
         $this->response->method('getHeaders')
             ->willReturn([
                 'Content-Type' => ['application/json'],
-                'X-Request-Id' => ['abc123']
+                'X-Request-Id' => ['abc123'],
             ]);
 
         $this->response->method('getHeader')
@@ -118,12 +118,12 @@ class HttpWorkerTest extends TestCase
                 'statusDescription' => '',
                 'headers' => [
                     'Content-Type' => 'application/json',
-                    'X-Request-Id' => 'abc123'
+                    'X-Request-Id' => 'abc123',
                 ],
                 'cookies' => [],
                 'multiValueHeaders' => [
                     'Content-Type' => ['application/json'],
-                    'X-Request-Id' => ['abc123']
+                    'X-Request-Id' => ['abc123'],
                 ],
                 'body' => '{"message":"success"}',
                 'isBase64Encoded' => false,
@@ -136,12 +136,12 @@ class HttpWorkerTest extends TestCase
             'statusDescription' => '',
             'headers' => [
                 'Content-Type' => 'application/json',
-                'X-Request-Id' => 'abc123'
+                'X-Request-Id' => 'abc123',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
                 'Content-Type' => ['application/json'],
-                'X-Request-Id' => ['abc123']
+                'X-Request-Id' => ['abc123'],
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
@@ -164,13 +164,13 @@ class HttpWorkerTest extends TestCase
 
         $cookies = [
             'session=abc123; Path=/; HttpOnly',
-            'preference=dark; Path=/; Max-Age=31536000'
+            'preference=dark; Path=/; Max-Age=31536000',
         ];
 
         $this->response->method('getHeaders')
             ->willReturn([
                 'Content-Type' => ['application/json'],
-                'Set-Cookie' => $cookies
+                'Set-Cookie' => $cookies,
             ]);
 
         $this->response->method('getHeader')
@@ -188,7 +188,7 @@ class HttpWorkerTest extends TestCase
                 'cookies' => $cookies,
                 'multiValueHeaders' => [
                     'Content-Type' => ['application/json'],
-                    'Set-Cookie' => $cookies
+                    'Set-Cookie' => $cookies,
                 ],
                 'body' => '{"message":"success"}',
                 'isBase64Encoded' => false,
@@ -205,7 +205,7 @@ class HttpWorkerTest extends TestCase
             'cookies' => $cookies,
             'multiValueHeaders' => [
                 'Content-Type' => ['application/json'],
-                'Set-Cookie' => $cookies
+                'Set-Cookie' => $cookies,
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
@@ -231,7 +231,7 @@ class HttpWorkerTest extends TestCase
 
         $this->response->method('getHeaders')
             ->willReturn([
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ]);
 
         $this->response->method('getHeader')
@@ -245,11 +245,11 @@ class HttpWorkerTest extends TestCase
                 'statusCode' => $statusCode,
                 'statusDescription' => '',
                 'headers' => [
-                    'Content-Type' => 'application/json'
+                    'Content-Type' => 'application/json',
                 ],
                 'cookies' => [],
                 'multiValueHeaders' => [
-                    'Content-Type' => ['application/json']
+                    'Content-Type' => ['application/json'],
                 ],
                 'body' => '{"message":"status ' . $statusCode . '"}',
                 'isBase64Encoded' => false,
@@ -270,11 +270,11 @@ class HttpWorkerTest extends TestCase
             'statusCode' => $statusCode,
             'statusDescription' => '',
             'headers' => [
-                'Content-Type' => 'application/json'
+                'Content-Type' => 'application/json',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
@@ -300,7 +300,7 @@ class HttpWorkerTest extends TestCase
 
         $this->response->method('getHeaders')
             ->willReturn([
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ]);
 
         $this->response->method('getHeader')
@@ -314,11 +314,11 @@ class HttpWorkerTest extends TestCase
                 'statusCode' => $statusCode,
                 'statusDescription' => '',
                 'headers' => [
-                    'Content-Type' => 'application/json'
+                    'Content-Type' => 'application/json',
                 ],
                 'cookies' => [],
                 'multiValueHeaders' => [
-                    'Content-Type' => ['application/json']
+                    'Content-Type' => ['application/json'],
                 ],
                 'body' => '{"message":"status ' . $statusCode . '"}',
                 'isBase64Encoded' => false,
@@ -339,11 +339,11 @@ class HttpWorkerTest extends TestCase
             'statusCode' => $statusCode,
             'statusDescription' => '',
             'headers' => [
-                'Content-Type' => 'application/json'
+                'Content-Type' => 'application/json',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
@@ -369,7 +369,7 @@ class HttpWorkerTest extends TestCase
 
         $this->response->method('getHeaders')
             ->willReturn([
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ]);
 
         $this->response->method('getHeader')
@@ -383,11 +383,11 @@ class HttpWorkerTest extends TestCase
                 'statusCode' => $statusCode,
                 'statusDescription' => '',
                 'headers' => [
-                    'Content-Type' => 'application/json'
+                    'Content-Type' => 'application/json',
                 ],
                 'cookies' => [],
                 'multiValueHeaders' => [
-                    'Content-Type' => ['application/json']
+                    'Content-Type' => ['application/json'],
                 ],
                 'body' => '{"message":"status ' . $statusCode . '"}',
                 'isBase64Encoded' => false,
@@ -408,11 +408,11 @@ class HttpWorkerTest extends TestCase
             'statusCode' => $statusCode,
             'statusDescription' => '',
             'headers' => [
-                'Content-Type' => 'application/json'
+                'Content-Type' => 'application/json',
             ],
             'cookies' => [],
             'multiValueHeaders' => [
-                'Content-Type' => ['application/json']
+                'Content-Type' => ['application/json'],
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
