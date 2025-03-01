@@ -27,10 +27,10 @@
   },
   "scripts": {
     "analyze": [
-      "php vendor/bin/phpstan.phar analyse --level max src"
+      "vendor/bin/phpstan analyse --level max src"
     ],
     "test": [
-      "php vendor/bin/phpunit -c phpunit.xml"
+      "vendor/bin/phpunit"
     ]
   },
   "config": {
