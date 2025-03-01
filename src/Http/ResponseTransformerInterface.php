@@ -9,14 +9,14 @@ use Psr\Http\Message\ResponseInterface;
 /**
  * Interface for transformers that convert HTTP responses to Lambda response format.
  */
-interface ResponseTransformerInterface extends TransformerInterface
+interface ResponseTransformerInterface
 {
     /**
      * Transform a PSR-7 Response into a Lambda response format.
      *
      * @param ResponseInterface $response The HTTP response
-     * @param mixed|null $context Optional context data
+     * @param array|null $context Optional context data
      * @return array The transformed Lambda response
      */
-    public function transform(mixed $response, mixed $context = null): array;
+    public function transform(ResponseInterface $response, ?array $context = null): array;
 }

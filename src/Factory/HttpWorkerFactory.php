@@ -78,6 +78,8 @@ class HttpWorkerFactory
             $container->get(WorkerInterface::class),
             $container->get(ServerRequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
+            null,
+            $container->get(LoggerInterface::class)
         );
     }
 }

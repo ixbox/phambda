@@ -11,7 +11,7 @@ use Psr\Http\Message\ServerRequestInterface;
 /**
  * Interface for transformers that convert Lambda events to HTTP requests.
  */
-interface RequestTransformerInterface extends TransformerInterface
+interface RequestTransformerInterface
 {
     /**
      * Transform a Lambda event into a PSR-7 ServerRequest.
@@ -20,5 +20,5 @@ interface RequestTransformerInterface extends TransformerInterface
      * @param Context $context The Lambda context
      * @return ServerRequestInterface The transformed server request
      */
-    public function transform(mixed $event, mixed $context = null): ServerRequestInterface;
+    public function transform(Event $event, Context $context): ServerRequestInterface;
 }

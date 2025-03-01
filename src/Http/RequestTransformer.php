@@ -17,6 +17,7 @@ class RequestTransformer implements RequestTransformerInterface
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
     ) {
+        //
     }
 
     /**
@@ -27,21 +28,8 @@ class RequestTransformer implements RequestTransformerInterface
      * @return ServerRequestInterface The transformed server request
      * @throws TransformationException If the event cannot be transformed
      */
-    public function transform(mixed $event, mixed $context = null): ServerRequestInterface
+    public function transform(Event $event, Context $context): ServerRequestInterface
     {
-        if (!$event instanceof Event) {
-            throw TransformationException::forRequest(
-                'Expected Event instance, got ' . (get_debug_type($event)),
-                ['event_type' => get_debug_type($event)]
-            );
-        }
-
-        if (!$context instanceof Context) {
-            throw TransformationException::forRequest(
-                'Expected Context instance, got ' . (get_debug_type($context)),
-                ['context_type' => get_debug_type($context)]
-            );
-        }
 
         try {
             $method = isset($event['requestContext']) ? $event['requestContext']['http']['method'] : $event['httpMethod'];

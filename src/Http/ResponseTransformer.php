@@ -13,18 +13,12 @@ class ResponseTransformer implements ResponseTransformerInterface
      * {@inheritdoc}
      *
      * @param ResponseInterface $response The HTTP response
-     * @param mixed|null $context Optional context data
+     * @param array|null $context Optional context data
      * @return array The transformed Lambda response
      * @throws TransformationException If the response cannot be transformed
      */
-    public function transform(mixed $response, mixed $context = null): array
+    public function transform(ResponseInterface $response, ?array $context = null): array
     {
-        if (!$response instanceof ResponseInterface) {
-            throw TransformationException::forResponse(
-                'Expected ResponseInterface instance, got ' . (get_debug_type($response)),
-                ['response_type' => get_debug_type($response)]
-            );
-        }
 
         try {
             $statusCode = $response->getStatusCode();
