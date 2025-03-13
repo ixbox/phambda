@@ -31,7 +31,7 @@
       "vendor/bin/phpstan analyse --level max src"
     ],
     "test": [
-      "vendor/bin/phpunit"
+      "vendor/bin/pest"
     ]
   },
   "config": {
