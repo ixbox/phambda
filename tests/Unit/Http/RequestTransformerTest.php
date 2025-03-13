@@ -64,8 +64,16 @@ class RequestTransformerTest extends TestCase
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) {
+                if ($name === 'awsRequestId' && $value === 'testRequestId') {
+                    return $this->request;
+                }
+                if ($name === 'lambda-context' && $value instanceof Context) {
+                    return $this->request;
+                }
+                $this->fail("Unexpected withAttribute call: $name");
+                return $this->request;
+            });
 
         $this->request->method('withHeader')
             ->with('content-type', 'application/json')
@@ -120,8 +128,16 @@ class RequestTransformerTest extends TestCase
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) {
+                if ($name === 'awsRequestId' && $value === 'testRequestId') {
+                    return $this->request;
+                }
+                if ($name === 'lambda-context' && $value instanceof Context) {
+                    return $this->request;
+                }
+                $this->fail("Unexpected withAttribute call: $name");
+                return $this->request;
+            });
 
         $this->request->method('withHeader')
             ->with('accept', 'application/json')
@@ -174,8 +190,16 @@ class RequestTransformerTest extends TestCase
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) {
+                if ($name === 'awsRequestId' && $value === 'testRequestId') {
+                    return $this->request;
+                }
+                if ($name === 'lambda-context' && $value instanceof Context) {
+                    return $this->request;
+                }
+                $this->fail("Unexpected withAttribute call: $name");
+                return $this->request;
+            });
 
         $this->request->expects($this->never())->method('withHeader');
 
@@ -230,8 +254,16 @@ class RequestTransformerTest extends TestCase
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) {
+                if ($name === 'awsRequestId' && $value === 'testRequestId') {
+                    return $this->request;
+                }
+                if ($name === 'lambda-context' && $value instanceof Context) {
+                    return $this->request;
+                }
+                $this->fail("Unexpected withAttribute call: $name");
+                return $this->request;
+            });
 
         // 複数のヘッダーが正しく処理されることを確認
         // PHPUnit 11では withConsecutive が非推奨のため、別の方法でテスト
@@ -299,8 +331,16 @@ class RequestTransformerTest extends TestCase
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
-            ->with('awsRequestId', 'testRequestId')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) {
+                if ($name === 'awsRequestId' && $value === 'testRequestId') {
+                    return $this->request;
+                }
+                if ($name === 'lambda-context' && $value instanceof Context) {
+                    return $this->request;
+                }
+                $this->fail("Unexpected withAttribute call: $name");
+                return $this->request;
+            });
 
         $this->request->expects($this->never())->method('withHeader');
 
