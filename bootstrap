@@ -17,6 +17,6 @@ $runtime = new \Phambda\Http\Runtime(
             );
         }
     },
-    new \Phambda\Logger\JsonLogger(minimumLevel: 'info'),
+    new \Phambda\Logger\NanoLogger(),
 );
 $runtime->run();
