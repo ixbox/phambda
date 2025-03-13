@@ -61,50 +61,89 @@ class ErrorLogger
 - CloudWatch Logs との効率的な連携
 - トラブルシューティングの容易化
 - パフォーマンス影響の最小化
+- PSR-3 規格への完全準拠
 
-#### 実装方針
+#### 実装済みの機能
 
-現在、JsonLogger と LtsvLogger が実装されています。
+1. フォーマッター層の抽象化
 
-```php
-// JSON形式のロガー
-class JsonLogger implements LoggerInterface
-{
-    use LoggerTrait;
+   - LogFormatterInterface による出力形式の標準化
+   - JSON 形式と LTSV 形式のサポート
+   - 拡張可能なフォーマッター設計
+   - ISO 8601 形式でのタイムスタンプ出力 (date('c'))
 
-    public function log($level, string|Stringable $message, array $context = []): void
-    {
-        error_log(json_encode([
-            'time' => date('c'),
-            'level' => $level,
-            'message' => $message,
-            'context' => $context
-        ]));
-    }
-}
+2. ログレベル管理
 
-// LTSV形式のロガー
-class LtsvLogger implements LoggerInterface
-{
-    use LoggerTrait;
+   - PSR-3 準拠のログレベル（DEBUG ～ EMERGENCY）
+   - 最小ログレベルによるフィルタリング
+   - ログレベルの数値化による効率的な比較
 
-    public function log($level, string|Stringable $message, array $context = []): void
-    {
-        error_log(sprintf("time:%s\tlevel:%s\tmessage:%s\tcontext:%s", date('c'), $level, $message, json_encode($context)));
-    }
-}
-```
+3. コンテキスト管理
 
-#### 実装方針
+   - デフォルトコンテキストのサポート
+   - コンテキストのマージ機能
+   - 構造化データの適切な処理
 
-1.  LogFormatterInterface を定義し、JsonFormatter と LtsvFormatter を実装する
-2.  AbstractLogger を作成し、ログレベルに基づいたフィルタリング処理を実装する
-3.  JsonLogger と LtsvLogger は AbstractLogger を継承し、それぞれのフォーマット処理を実装する
+4. 実装クラス
+   - AbstractLogger: 基本実装の提供
+   - JsonLogger: JSON 形式での出力
+   - LtsvLogger: LTSV 形式での出力
 
-#### 今後の検討事項
+#### 設計上の利点
 
-- AWS Lambda 環境への最適化
-- ログレベルの制御
+1. 拡張性
+
+   - フォーマッターの追加が容易
+   - PSR-3 互換の任意のロガーとの統合が可能
+   - カスタムログレベルの追加サポート
+
+2. 性能
+
+   - 条件付きログ出力による処理の最適化
+   - フォーマッター層での効率的なデータ変換
+   - メモリ使用量の最小化
+
+3. 運用性
+   - 構造化ログによる検索性の向上
+   - ログレベルによる重要度の明確化
+   - 標準的なタイムスタンプフォーマット
+
+#### 今後の展開
+
+1. 出力先の多様化
+
+   - CloudWatch Logs 以外の出力先対応
+   - 非同期ログ出力のサポート
+   - ログローテーション機能の検討
+
+2. コンテキスト機能の拡張
+
+   - リクエスト ID の自動付与
+   - エラートレース情報の構造化
+   - カスタムメタデータの柔軟な追加
+   - タイムゾーン対応の強化
+     - 設定可能なタイムゾーン
+     - マルチリージョン対応
+     - ログ集約時のタイムゾーン正規化
+
+3. パフォーマンス最適化
+
+   - バッファリング機能の実装
+   - 高負荷時の出力制御
+   - メモリ使用量の監視と制御
+
+4. タイムスタンプの改善
+   - カスタマイズ可能なタイムスタンプフォーマット
+   - タイムゾーン情報の明示的な付与
+   - マイクロ秒精度のサポート
+   - システムのデフォルトタイムゾーンに依存しない実装
+
+#### 運用考慮事項
+
+1. タイムゾーン管理
+   - AWS Lambda 実行環境のタイムゾーン設定
+   - アプリケーションログとシステムログの時刻同期
+   - 異なるリージョン間でのログ統合時の時刻調整
 
 ### 3. パフォーマンス最適化
 
