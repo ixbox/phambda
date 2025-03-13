@@ -265,6 +265,55 @@ class MemoryUsageTest extends TestCase
 - CloudWatch Logs での安全なログ管理
 - エラーメッセージの適切な抽象化
 
+### 6. リクエストコンテキストの活用
+
+#### 概要
+
+- ServerRequestInterface のアトリビュートとして Lambda コンテキストを提供
+  - `awsRequestId`: リクエストの一意識別子
+  - `lambda-context`: Context オブジェクト全体
+
+#### 設計方針
+
+- シンプルなアクセス方法の提供
+- PSR-7 標準の活用
+- ユーザー側での柔軟な実装をサポート
+
+#### ユースケース
+
+- リクエスト ID のログ記録
+- 関数情報の取得
+- CloudWatch Logs 関連情報の活用
+- パフォーマンスモニタリング情報の取得
+
+#### サンプルコード
+
+```php
+class ExampleHandler implements RequestHandlerInterface
+{
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        // リクエストIDの取得
+        $requestId = $request->getAttribute('awsRequestId');
+
+        /** @var \Phambda\Context $context */
+        $context = $request->getAttribute('lambda-context');
+
+        $this->logger->info('リクエスト処理開始', [
+            'request_id' => $requestId,
+            'function' => [
+                'name' => $context->functionName,
+                'version' => $context->functionVersion,
+                'memory' => $context->memoryLimitInMb
+            ]
+        ]);
+
+        // ... リクエスト処理 ...
+        return new Response(200);
+    }
+}
+```
+
 ## 運用考慮事項
 
 ### 1. モニタリングと可観測性

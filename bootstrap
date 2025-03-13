@@ -3,20 +3,9 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
+$logger = new \Phambda\Logger\NanoLogger();
 $runtime = new \Phambda\Http\Runtime(
-    new class implements \Psr\Http\Server\RequestHandlerInterface {
-        public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
-        {
-            return new \Nyholm\Psr7\Response(
-                headers: [
-                    'Content-Type' => 'text/plain',
-                    'Set-Cookie' => ['test1=1', 'test2=2', 'test3=3'],
-                    'x-test' => 'test',
-                ],
-                body: 'Hello World!',
-            );
-        }
-    },
-    new \Phambda\Logger\NanoLogger(),
+    new \Phambda\Example\Http\ExampleHandler($logger),
+    $logger,
 );
 $runtime->run();

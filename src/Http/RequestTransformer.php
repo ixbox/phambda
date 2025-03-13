@@ -36,7 +36,9 @@ class RequestTransformer implements RequestTransformerInterface
             $path = isset($event['requestContext']) ? $event['requestContext']['http']['path'] : $event['path'];
 
             $request = $this->requestFactory->createServerRequest($method, $path, (array) $context);
-            $request = $request->withAttribute('awsRequestId', $context['awsRequestId']);
+            $request = $request
+                ->withAttribute('awsRequestId', $context['awsRequestId'])
+                ->withAttribute('lambda-context', $context);
 
             // Add headers
             foreach ((array) ($event['headers'] ?? []) as $name => $value) {
