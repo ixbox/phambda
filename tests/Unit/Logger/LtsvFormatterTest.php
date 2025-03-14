@@ -4,7 +4,7 @@ namespace Tests\Unit\Logger;
 
 use Phambda\Logger\LtsvFormatter;
 
-it('formats data correctly', function () {
+it('formats data correctly', function (): void {
     $formatter = new LtsvFormatter();
     $data = [
         'time' => 'test_time',

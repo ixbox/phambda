@@ -10,13 +10,6 @@ namespace Phambda\Exception;
 class InitializationException extends PhambdaException
 {
     /**
-     * Configuration that was used during initialization.
-     *
-     * @var array<string, mixed>
-     */
-    private array $configuration;
-
-    /**
      * @param string $message Error message
      * @param array<string, mixed> $configuration Configuration that was used
      * @param int $code Error code
@@ -24,13 +17,15 @@ class InitializationException extends PhambdaException
      */
     public function __construct(
         string $message,
-        array $configuration = [],
+        /**
+         * Configuration that was used during initialization.
+         */
+        private readonly array $configuration = [],
         int $code = 0,
         ?\Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
-        $this->configuration = $configuration;
-        $this->addContext('configuration', $configuration);
+        $this->addContext('configuration', $this->configuration);
     }
 
     /**

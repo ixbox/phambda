@@ -2,7 +2,7 @@
 
 use Phambda\Logger\JsonFormatter;
 
-it('formats data correctly', function () {
+it('formats data correctly', function (): void {
     $formatter = new JsonFormatter();
     $data = [
         'time' => 'test_time',

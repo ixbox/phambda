@@ -5,17 +5,15 @@ use Phambda\Logger\LogFormatterInterface;
 use Phambda\Logger\LoggerConfiguration;
 use Psr\Log\LogLevel;
 
-beforeEach(function () {
+beforeEach(function (): void {
     putenv('LOG_TIMEZONE');
 });
 
-it('filters log levels correctly', function () {
+it('filters log levels correctly', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(function ($data) {
-            return $data['level'] === LogLevel::INFO;
-        }))
+        ->with(Mockery::on(fn($data) => $data['level'] === LogLevel::INFO))
         ->andReturn('');
 
     $logger = new class($formatter, LogLevel::INFO) extends AbstractLogger {
@@ -29,15 +27,13 @@ it('filters log levels correctly', function () {
     $logger->info('This is an info message');
 });
 
-it('uses environment timezone when no configuration is provided', function () {
+it('uses environment timezone when no configuration is provided', function (): void {
     putenv('LOG_TIMEZONE=Asia/Tokyo');
 
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(function ($data) {
-            return strpos($data['time'], '+09:00') !== false;
-        }))
+        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+09:00')))
         ->andReturn('');
 
     $logger = new class($formatter, LogLevel::DEBUG) extends AbstractLogger {
@@ -50,14 +46,14 @@ it('uses environment timezone when no configuration is provided', function () {
     $logger->info('Test message');
 });
 
-it('prioritizes configuration timezone over environment variable', function () {
+it('prioritizes configuration timezone over environment variable', function (): void {
     putenv('LOG_TIMEZONE=America/New_York');  // UTC-4
 
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
         ->with(Mockery::on(function ($data) {
-            return strpos($data['time'], '+09:00') !== false;  // Asia/Tokyo
+            return str_contains((string) $data['time'], '+09:00');  // Asia/Tokyo
         }))
         ->andReturn('');
 
@@ -72,13 +68,11 @@ it('prioritizes configuration timezone over environment variable', function () {
     $logger->info('Test message');
 });
 
-it('uses UTC timezone when no configuration or environment variable is provided', function () {
+it('uses UTC timezone when no configuration or environment variable is provided', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(function ($data) {
-            return strpos($data['time'], '+00:00') !== false;
-        }))
+        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+00:00')))
         ->andReturn('');
 
     $logger = new class($formatter, LogLevel::DEBUG) extends AbstractLogger {
@@ -91,13 +85,11 @@ it('uses UTC timezone when no configuration or environment variable is provided'
     $logger->info('Test message');
 });
 
-it('uses correct timezone from configuration', function () {
+it('uses correct timezone from configuration', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(function ($data) {
-            return strpos($data['time'], '+09:00') !== false;
-        }))
+        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+09:00')))
         ->andReturn('');
 
     $config = new LoggerConfiguration('Asia/Tokyo');

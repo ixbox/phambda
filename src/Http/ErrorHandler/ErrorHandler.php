@@ -94,7 +94,7 @@ class ErrorHandler implements ErrorHandlerInterface
     private function getErrorCode(\Throwable $error): string
     {
         // Convert exception class name to error code
-        $className = basename(str_replace('\\', '/', get_class($error)));
-        return strtoupper(preg_replace('/([a-z])([A-Z])/', '$1_$2', $className));
+        $className = basename(str_replace('\\', '/', $error::class));
+        return strtoupper((string) preg_replace('/([a-z])([A-Z])/', '$1_$2', $className));
     }
 }

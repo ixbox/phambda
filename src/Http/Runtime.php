@@ -62,7 +62,7 @@ class Runtime implements RuntimeInterface
             } catch (\Throwable $error) {
                 $this->worker->logger->error('Unexpected runtime error', [
                     'error' => $error->getMessage(),
-                    'type' => get_class($error),
+                    'type' => $error::class,
                     'request_id' => $awsRequestId,
                     'file' => $error->getFile(),
                     'line' => $error->getLine()
