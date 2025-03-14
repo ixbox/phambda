@@ -13,6 +13,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Throwable;
 
 class Worker implements WorkerInterface
@@ -22,21 +23,21 @@ class Worker implements WorkerInterface
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
         private ?string $baseUri = null,
-        private readonly ?LoggerInterface $logger = null,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {
         $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?: '127.0.0.1:9001';
         $this->baseUri ??= "http://{$awsLambdaRuntimeApi}/2018-06-01";
-        $this->logger?->info('Using base URI: ' . $this->baseUri);
+        $this->logger->info('Using base URI: ' . $this->baseUri);
     }
 
     public function nextInvocation(): Invocation
     {
         try {
-            $this->logger?->debug('Fetching next invocation');
+            $this->logger->debug('Fetching next invocation');
             $request = $this->requestFactory->createRequest('GET', "{$this->baseUri}/runtime/invocation/next");
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 200) {
-                $this->logger?->warning('Received non-200 response: ' . $response->getStatusCode());
+                $this->logger->warning('Received non-200 response: ' . $response->getStatusCode());
                 throw new RuntimeException(
                     'Failed to fetch next invocation',
                     $response->getStatusCode()
@@ -55,7 +56,7 @@ class Worker implements WorkerInterface
                 deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms') ?? '',
             );
 
-            $this->logger?->info('Received invocation: Request ID ' . $context->awsRequestId);
+            $this->logger->info('Received invocation: Request ID ' . $context->awsRequestId);
             return new Invocation($event, $context);
         } catch (ClientExceptionInterface | JsonException | RuntimeException $error) {
             $this->initError($error);
@@ -70,7 +71,7 @@ class Worker implements WorkerInterface
     public function respond(string $invocationId, string $payload): void
     {
         try {
-            $this->logger?->debug('Sending invocation response: ' . $invocationId);
+            $this->logger->debug('Sending invocation response: ' . $invocationId);
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/response")
                 ->withBody($this->streamFactory->createStream($payload));
@@ -84,7 +85,7 @@ class Worker implements WorkerInterface
                 );
             }
         } catch (ClientExceptionInterface | RuntimeException $error) {
-            $this->logger?->error('Failed to send invocation response', [
+            $this->logger->error('Failed to send invocation response', [
                 'error' => $error->getMessage(),
                 'invocation_id' => $invocationId,
                 'type' => $error::class
@@ -100,7 +101,7 @@ class Worker implements WorkerInterface
                 ));
             } catch (InitializationException $initError) {
                 // エラー通知も失敗した場合は致命的
-                $this->logger?->critical('Failed to notify response failure. Runtime cannot proceed.', [
+                $this->logger->critical('Failed to notify response failure. Runtime cannot proceed.', [
                     'error' => $initError->getMessage(),
                     'invocation_id' => $invocationId,
                     'original_error' => $error::class
@@ -113,7 +114,7 @@ class Worker implements WorkerInterface
     public function error(string $invocationId, Throwable $error): void
     {
         try {
-            $this->logger?->info('Sending error response for invocation: ' . $invocationId);
+            $this->logger->info('Sending error response for invocation: ' . $invocationId);
             $errorData = [
                 'errorMessage' => $error->getMessage(),
                 'errorType' => $error::class,
@@ -132,7 +133,7 @@ class Worker implements WorkerInterface
 
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
-            $this->logger?->critical('Failed to send error response. Runtime cannot proceed without response.', [
+            $this->logger->critical('Failed to send error response. Runtime cannot proceed without response.', [
                 'error' => $error->getMessage(),
                 'invocation_id' => $invocationId,
                 'original_error' => $error::class
@@ -166,7 +167,7 @@ class Worker implements WorkerInterface
 
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
-            $this->logger?->critical($error->getMessage());
+            $this->logger->critical($error->getMessage());
             throw InitializationException::fromEnvironment(
                 'Failed to send initialization error: ' . $error->getMessage(),
                 0,
