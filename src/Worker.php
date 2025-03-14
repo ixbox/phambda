@@ -94,23 +94,13 @@ class Worker implements WorkerInterface
                 'type' => $error::class
             ]);
 
-            try {
-                // レスポンス送信の失敗をエラーとして通知
-                $this->error($invocationId, RuntimeException::forInvocation(
-                    'Failed to send invocation response: ' . $error->getMessage(),
-                    $invocationId,
-                    $error->getCode(),
-                    $error
-                ));
-            } catch (InitializationException $initError) {
-                // エラー通知も失敗した場合は致命的
-                $this->logger->critical('Failed to notify response failure. Runtime cannot proceed.', [
-                    'error' => $initError->getMessage(),
-                    'invocation_id' => $invocationId,
-                    'original_error' => $error::class
-                ]);
-                throw $initError;
-            }
+            // エラー通知の失敗は致命的なため、error()メソッドに委ねる
+            $this->error($invocationId, RuntimeException::forInvocation(
+                'Failed to send invocation response: ' . $error->getMessage(),
+                $invocationId,
+                $error->getCode(),
+                $error
+            ));
         }
     }
 
