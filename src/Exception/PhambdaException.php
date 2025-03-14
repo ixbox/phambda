@@ -4,50 +4,81 @@ declare(strict_types=1);
 
 namespace Phambda\Exception;
 
-use Exception;
-
 /**
- * Base exception class for all Phambda exceptions.
+ * Base exception class for all Phambda-specific exceptions.
+ * 
+ * This class extends RuntimeException and adds context handling capabilities
+ * for better error tracking and debugging in AWS Lambda environment.
  */
-class PhambdaException extends Exception
+abstract class PhambdaException extends \RuntimeException
 {
     /**
-     * @var array<string, mixed> Additional context information
+     * Context information for the exception.
+     *
+     * @var array<string, mixed>
      */
-    protected array $context = [];
+    private array $context = [];
 
     /**
-     * Set context information for this exception.
+     * Constructor.
      *
-     * @param array<string, mixed> $context
-     * @return $this
+     * @param string $message Error message
+     * @param int $code Error code
+     * @param \Throwable|null $previous Previous exception
      */
-    public function setContext(array $context): self
-    {
-        $this->context = $context;
-        return $this;
+    public function __construct(
+        string $message,
+        int $code = 0,
+        ?\Throwable $previous = null
+    ) {
+        parent::__construct($message, $code, $previous);
     }
 
     /**
-     * Add a single context value.
+     * Add context information to the exception.
      *
-     * @param string $key
-     * @param mixed $value
-     * @return $this
+     * @param string $key Context key
+     * @param mixed $value Context value
+     * @return void
      */
-    public function addContext(string $key, mixed $value): self
+    protected function addContext(string $key, mixed $value): void
     {
         $this->context[$key] = $value;
-        return $this;
     }
 
     /**
-     * Get the context information.
+     * Get all context information.
      *
      * @return array<string, mixed>
      */
     public function getContext(): array
     {
         return $this->context;
+    }
+
+    /**
+     * Get specific context value by key.
+     *
+     * @param string $key Context key
+     * @return mixed|null Context value if exists, null otherwise
+     */
+    public function getContextValue(string $key): mixed
+    {
+        return $this->context[$key] ?? null;
+    }
+
+    /**
+     * Convert the exception to a string including context information.
+     *
+     * @return string
+     */
+    public function __toString(): string
+    {
+        $baseString = parent::__toString();
+        if (empty($this->context)) {
+            return $baseString;
+        }
+
+        return $baseString . "\nContext: " . json_encode($this->context, JSON_PRETTY_PRINT);
     }
 }
