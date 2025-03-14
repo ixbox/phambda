@@ -13,20 +13,23 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
+use Phambda\WorkerConfiguration;
 use Throwable;
 
 class Worker implements WorkerInterface
 {
+    private readonly string $baseUri;
+    private readonly LoggerInterface $logger;
+
     public function __construct(
         private readonly ClientInterface $client,
         private readonly RequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
-        private ?string $baseUri = null,
-        private readonly LoggerInterface $logger = new NullLogger(),
+        ?WorkerConfiguration $configuration = null
     ) {
-        $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?: '127.0.0.1:9001';
-        $this->baseUri ??= "http://{$awsLambdaRuntimeApi}/2018-06-01";
+        $configuration ??= WorkerConfiguration::fromEnvironment();
+        $this->baseUri = $configuration->baseUri;
+        $this->logger = $configuration->logger;
         $this->logger->info('Using base URI: ' . $this->baseUri);
     }
 
