@@ -6,6 +6,7 @@ namespace Phambda;
 
 use JsonException;
 use Phambda\Exception\InitializationException;
+use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -92,14 +93,21 @@ class Worker implements WorkerInterface
     {
         try {
             $this->logger?->info('Sending error response for invocation: ' . $invocationId);
-            $body = json_encode([
+            $errorData = [
                 'errorMessage' => $error->getMessage(),
                 'errorType' => $error::class,
-            ]);
+                'stackTrace' => $this->getStackTrace($error)
+            ];
+
+            if ($error instanceof PhambdaException && !empty($error->getContext())) {
+                $errorData['context'] = $error->getContext();
+            }
 
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/error")
-                ->withBody($this->streamFactory->createStream($body));
+                ->withBody($this->streamFactory->createStream(json_encode($errorData)))
+                ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
+                ->withHeader('Lambda-Runtime-Function-Error-Type', $error::class);
 
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {
@@ -115,13 +123,20 @@ class Worker implements WorkerInterface
     public function initError(Throwable $error): void
     {
         try {
-            $body = $this->streamFactory->createStream(json_encode([
+            $errorData = [
                 'errorMessage' => $error->getMessage(),
                 'errorType' => $error::class,
-            ]));
+                'stackTrace' => $this->getStackTrace($error)
+            ];
+
+            if ($error instanceof PhambdaException && !empty($error->getContext())) {
+                $errorData['context'] = $error->getContext();
+            }
+
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/init/error")
-                ->withBody($body)
+                ->withBody($this->streamFactory->createStream(json_encode($errorData)))
+                ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
                 ->withHeader('Lambda-Runtime-Function-Error-Type', 'Unhandled');
 
             $this->client->sendRequest($request);
@@ -133,5 +148,30 @@ class Worker implements WorkerInterface
                 $error
             );
         }
+    }
+
+    /**
+     * Get formatted stack trace from an error.
+     *
+     * @param \Throwable $error
+     * @return array<string>
+     */
+    private function getStackTrace(\Throwable $error): array
+    {
+        return array_map(
+            fn($trace) => sprintf(
+                '%s:%d - %s%s%s(%s)',
+                $trace['file'] ?? 'unknown',
+                $trace['line'] ?? 0,
+                $trace['class'] ?? '',
+                $trace['type'] ?? '',
+                $trace['function'] ?? '',
+                implode(', ', array_map(
+                    fn($arg) => is_scalar($arg) ? (string)$arg : gettype($arg),
+                    $trace['args'] ?? []
+                ))
+            ),
+            $error->getTrace()
+        );
     }
 }
