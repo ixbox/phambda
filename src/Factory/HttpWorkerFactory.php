@@ -10,6 +10,7 @@ use Phambda\Http\RequestTransformerInterface;
 use Phambda\Http\ResponseTransformer;
 use Phambda\Http\ResponseTransformerInterface;
 use Phambda\Worker;
+use Phambda\WorkerConfiguration;
 use Phambda\WorkerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
@@ -19,6 +20,7 @@ use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class HttpWorkerFactory
 {
@@ -39,9 +41,9 @@ class HttpWorkerFactory
         ?ServerRequestFactoryInterface $serverRequestFactory = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-        ?LoggerInterface $logger = null,
         ?RequestTransformerInterface $requestTransformer = null,
         ?ResponseTransformerInterface $responseTransformer = null,
+        LoggerInterface $logger = new NullLogger(),
     ): HttpWorkerInterface {
         $psr18client = new Psr18Client();
 
@@ -50,21 +52,21 @@ class HttpWorkerFactory
         $requestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
 
-        $logger?->info('Creating Worker');
-        $worker = new Worker($client, $requestFactory, $streamFactory, null, $logger);
+        $logger->info('Creating Worker');
+        $worker = new Worker($client, $requestFactory, $streamFactory, WorkerConfiguration::fromEnvironment($logger));
 
         // Create transformers if not provided
         $requestTransformer ??= new RequestTransformer($serverRequestFactory, $streamFactory);
         $responseTransformer ??= new ResponseTransformer();
 
-        $logger?->info('Creating HttpWorker');
+        $logger->info('Creating HttpWorker');
         return new HttpWorker(
             $worker,
             $serverRequestFactory,
             $streamFactory,
-            $logger,
             $requestTransformer,
-            $responseTransformer
+            $responseTransformer,
+            $logger
         );
     }
 
@@ -78,8 +80,7 @@ class HttpWorkerFactory
             $container->get(WorkerInterface::class),
             $container->get(ServerRequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
-            null,
-            $container->get(LoggerInterface::class)
+            WorkerConfiguration::fromEnvironment($container->get(LoggerInterface::class)),
         );
     }
 }

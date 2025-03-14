@@ -4,73 +4,85 @@ declare(strict_types=1);
 
 namespace Phambda\Http;
 
+use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Exception\TransformationException;
 use Phambda\Factory\HttpWorkerFactory;
 use Phambda\RuntimeInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Nyholm\Psr7\Factory\Psr17Factory;
 
 class Runtime implements RuntimeInterface
 {
+    private readonly HttpWorkerInterface $worker;
+
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private readonly ?LoggerInterface $logger = null,
-        private ?HttpWorkerInterface $worker = null,
+        private readonly LoggerInterface $logger = new NullLogger(),
+        ?HttpWorkerInterface $worker = null,
     ) {
-        $logger?->info('Creating HTTP runtime');
-        $this->worker ??= HttpWorkerFactory::create(logger: $logger);
+        $this->worker = $worker ?? HttpWorkerFactory::create(logger: $this->logger);
+        $this->logger->info('HTTP runtime initialized');
     }
 
     public function run(): void
     {
-        $this->logger?->info('Starting HTTP request handling loop');
-        do {
+        $this->logger->info('Starting HTTP request handling loop');
+
+        while (true) {
             try {
-                $this->logger?->debug('Processing new HTTP request');
                 $request = $this->worker->nextRequest();
-
-                // Validate request has required attributes
                 $awsRequestId = $this->validateRequest($request);
-
                 $response = $this->handler->handle($request);
+                $this->worker->respond($awsRequestId, $response);
+            } catch (InitializationException $error) {
+                $this->logger->critical('Fatal initialization error', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'context' => $error->getContext()
+                ]);
+                throw $error;
+            } catch (PhambdaException $error) {
+                $this->logger->error('Request handling error', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'request_id' => $awsRequestId,
+                    'context' => $error->getContext()
+                ]);
+
                 $this->worker->respond(
                     $awsRequestId,
-                    $response,
+                    $this->createErrorResponse($error)
                 );
-            } catch (PhambdaException $error) {
-                $this->logger?->error('Error processing HTTP request: ' . $error->getMessage());
-
-                // If we have a request ID, we can respond with an error
-                if (isset($request) && $request->getAttribute('awsRequestId')) {
-                    $this->worker->respond(
-                        $request->getAttribute('awsRequestId'),
-                        $this->createErrorResponse($error)
-                    );
-                }
             } catch (\Throwable $error) {
-                $this->logger?->error('Unexpected error in HTTP runtime: ' . $error->getMessage());
+                $this->logger->error('Unexpected runtime error', [
+                    'error' => $error->getMessage(),
+                    'type' => get_class($error),
+                    'request_id' => $awsRequestId,
+                    'file' => $error->getFile(),
+                    'line' => $error->getLine()
+                ]);
 
-                // If we have a request ID, we can respond with an error
-                if (isset($request) && $request->getAttribute('awsRequestId')) {
-                    $this->worker->respond(
-                        $request->getAttribute('awsRequestId'),
-                        $this->createErrorResponse($error)
-                    );
-                }
+                $runtimeError = RuntimeException::forInvocation(
+                    $error->getMessage(),
+                    $awsRequestId,
+                    $error->getCode(),
+                    $error
+                );
+
+                $this->worker->respond(
+                    $awsRequestId,
+                    $this->createErrorResponse($runtimeError)
+                );
             }
-        } while (true);
+        }
     }
 
-    /**
-     * Validate that the request has the required attributes.
-     *
-     * @param ServerRequestInterface $request
-     * @return string The AWS request ID
-     * @throws TransformationException If the request is invalid
-     */
     private function validateRequest(ServerRequestInterface $request): string
     {
         $awsRequestId = $request->getAttribute('awsRequestId');
@@ -84,42 +96,32 @@ class Runtime implements RuntimeInterface
         return $awsRequestId;
     }
 
-    /**
-     * Create an error response from an exception.
-     *
-     * @param \Throwable $error
-     * @return \Psr\Http\Message\ResponseInterface
-     */
-    private function createErrorResponse(\Throwable $error): \Psr\Http\Message\ResponseInterface
+    private function createErrorResponse(\Throwable $error): ResponseInterface
     {
-        // Use HTTP Discovery to create a response
-        $psr18Client = new \Http\Discovery\Psr18Client();
-        $responseFactory = $psr18Client;
-        $streamFactory = $psr18Client;
+        $psr17Factory = new Psr17Factory();
 
-        // Create a simple JSON error response
         $errorData = [
-            'error' => $error->getMessage(),
-            'code' => $error->getCode(),
-            'type' => $error::class,
+            'errorMessage' => $error->getMessage(),
+            'errorType' => $error::class,
+            'stackTrace' => explode("\n", $error->getTraceAsString())
         ];
 
-        // If it's a PhambdaException, include context information
         if ($error instanceof PhambdaException && !empty($error->getContext())) {
             $errorData['context'] = $error->getContext();
         }
 
-        // Create a simple error response
-        $response = $responseFactory->createResponse(500)
-            ->withHeader('Content-Type', 'application/json');
+        $response = $psr17Factory->createResponse(500)
+            ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json');
 
-        $errorBody = $streamFactory->createStream(json_encode($errorData));
+        $errorBody = $psr17Factory->createStream(
+            json_encode($errorData, JSON_PRETTY_PRINT)
+        );
 
         return $response->withBody($errorBody);
     }
 
-    public static function execute(RequestHandlerInterface $handler): void
+    public static function execute(RequestHandlerInterface $handler, LoggerInterface $logger = new NullLogger()): void
     {
-        (new self($handler))->run();
+        (new self($handler, $logger))->run();
     }
 }

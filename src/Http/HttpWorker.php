@@ -11,63 +11,68 @@ use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class HttpWorker implements HttpWorkerInterface
 {
-    /**
-     * @var RequestTransformerInterface
-     */
-    private readonly RequestTransformerInterface $requestTransformer;
-
     public function __construct(
         private readonly WorkerInterface $worker,
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
-        private readonly ?LoggerInterface $logger = null,
-        ?RequestTransformerInterface $requestTransformer = null,
-        private readonly ResponseTransformerInterface $responseTransformer = new ResponseTransformer(),
+        private readonly RequestTransformerInterface $requestTransformer,
+        private readonly ResponseTransformerInterface $responseTransformer,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {
-        $this->requestTransformer = $requestTransformer ?? new RequestTransformer($requestFactory, $streamFactory);
+        //
     }
 
-    /**
-     * Get the next HTTP request from the Lambda runtime.
-     *
-     * @return ServerRequestInterface
-     * @throws TransformationException If the event cannot be transformed to a request
-     */
     public function nextRequest(): ServerRequestInterface
     {
-        $this->logger?->debug('Transforming Lambda event to HTTP request');
-        $invocation = $this->worker->nextInvocation();
+        try {
+            $this->logger->debug('Requesting next Lambda invocation');
+            $invocation = $this->worker->nextInvocation();
 
-        $request = $this->requestTransformer->transform($invocation->event, $invocation->context);
-        $this->logger?->info(sprintf(
-            'Received HTTP request: %s %s',
-            $request->getMethod(),
-            $request->getUri()->getPath()
-        ));
+            $request = $this->requestTransformer->transform($invocation->event, $invocation->context);
+            $this->logger->info('HTTP request received', [
+                'method' => $request->getMethod(),
+                'path' => $request->getUri()->getPath(),
+                'aws_request_id' => $invocation->context->awsRequestId
+            ]);
 
-        return $request;
+            return $request;
+        } catch (TransformationException $e) {
+            $this->logger->error('Failed to transform Lambda event to HTTP request', [
+                'error' => $e->getMessage(),
+                'context' => $e->getContext()
+            ]);
+            throw $e;
+        }
     }
 
-    /**
-     * Send an HTTP response back to the Lambda runtime.
-     *
-     * @param string $awsInvocationId
-     * @param ResponseInterface $response
-     * @throws TransformationException If the response cannot be transformed
-     */
-    public function respond(string $awsInvocationId, ResponseInterface $response): void
+    public function respond(string $awsRequestId, ResponseInterface $response): void
     {
-        $this->logger?->debug('Transforming HTTP response to Lambda response');
-        $responsePayload = $this->responseTransformer->transform($response);
+        try {
+            $this->logger->debug('Transforming HTTP response', [
+                'status' => $response->getStatusCode(),
+                'aws_request_id' => $awsRequestId
+            ]);
 
-        $this->logger?->info(sprintf(
-            'Sending HTTP response: %d %s',
-            $response->getStatusCode(),
-            $response->getReasonPhrase()
-        ));
-        $this->worker->respond($awsInvocationId, json_encode($responsePayload));
+            $responsePayload = $this->responseTransformer->transform($response);
+
+            $this->worker->respond($awsRequestId, json_encode($responsePayload));
+
+            $this->logger->info('HTTP response sent', [
+                'status' => $response->getStatusCode(),
+                'reason' => $response->getReasonPhrase(),
+                'aws_request_id' => $awsRequestId
+            ]);
+        } catch (TransformationException $e) {
+            $this->logger->error('Failed to transform HTTP response', [
+                'error' => $e->getMessage(),
+                'context' => $e->getContext(),
+                'aws_request_id' => $awsRequestId
+            ]);
+            throw $e;
+        }
     }
 }
