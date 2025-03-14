@@ -21,11 +21,11 @@ class WorkerFactory
         ?ClientInterface $client = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-        ?WorkerConfiguration $configuration = null,
+        LoggerInterface $logger = new NullLogger(),
     ): WorkerInterface {
-        $configuration?->logger->info('Creating Worker');
+        $logger->info('Creating Worker');
 
-        $configuration ??= WorkerConfiguration::fromEnvironment();
+        $configuration ??= WorkerConfiguration::fromEnvironment($logger);
         $psr18client = new Psr18Client();
 
         $client ??= $psr18client;

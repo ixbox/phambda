@@ -19,7 +19,7 @@ use Throwable;
 class Worker implements WorkerInterface
 {
     private readonly string $baseUri;
-    private readonly LoggerInterface $logger;
+    public readonly LoggerInterface $logger;
 
     public function __construct(
         private readonly ClientInterface $client,
@@ -139,7 +139,7 @@ class Worker implements WorkerInterface
         }
     }
 
-    public function initError(Throwable $error): void
+    private function initError(Throwable $error): void
     {
         try {
             $errorData = [

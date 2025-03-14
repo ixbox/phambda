@@ -21,7 +21,7 @@ class HttpWorker implements HttpWorkerInterface
         private readonly StreamFactoryInterface $streamFactory,
         private readonly RequestTransformerInterface $requestTransformer,
         private readonly ResponseTransformerInterface $responseTransformer,
-        private readonly LoggerInterface $logger = new NullLogger(),
+        public readonly LoggerInterface $logger = new NullLogger(),
     ) {
         //
     }

@@ -23,16 +23,16 @@ class Runtime implements RuntimeInterface
 
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private readonly LoggerInterface $logger = new NullLogger(),
+        ?LoggerInterface $logger = null,
         ?HttpWorkerInterface $worker = null,
     ) {
-        $this->worker = $worker ?? HttpWorkerFactory::create(logger: $this->logger);
-        $this->logger->info('HTTP runtime initialized');
+        $this->worker = $worker ?? HttpWorkerFactory::create(logger: $logger);
+        $this->worker->logger->info('HTTP runtime initialized');
     }
 
     public function run(): void
     {
-        $this->logger->info('Starting HTTP request handling loop');
+        $this->worker->logger->info('Starting HTTP request handling loop');
 
         while (true) {
             try {
@@ -41,14 +41,14 @@ class Runtime implements RuntimeInterface
                 $response = $this->handler->handle($request);
                 $this->worker->respond($awsRequestId, $response);
             } catch (InitializationException $error) {
-                $this->logger->critical('Fatal initialization error', [
+                $this->worker->logger->critical('Fatal initialization error', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'context' => $error->getContext()
                 ]);
                 throw $error;
             } catch (PhambdaException $error) {
-                $this->logger->error('Request handling error', [
+                $this->worker->logger->error('Request handling error', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $awsRequestId,
@@ -60,7 +60,7 @@ class Runtime implements RuntimeInterface
                     $this->createErrorResponse($error)
                 );
             } catch (\Throwable $error) {
-                $this->logger->error('Unexpected runtime error', [
+                $this->worker->logger->error('Unexpected runtime error', [
                     'error' => $error->getMessage(),
                     'type' => get_class($error),
                     'request_id' => $awsRequestId,

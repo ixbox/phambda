@@ -8,27 +8,32 @@ use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\WorkerFactory;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class Runtime implements RuntimeInterface
 {
+    private readonly WorkerInterface $worker;
+
     public function __construct(
         private readonly HandlerInterface $handler,
-        private readonly ?LoggerInterface $logger = null,
-        private ?Worker $worker = null,
+        ?LoggerInterface $logger = null,
+        ?WorkerInterface $worker = null,
     ) {
-        $this->logger?->info('Creating Runtime instance');
-        $this->worker ??= WorkerFactory::create(logger: $logger);
+        $this->worker = $worker ?? WorkerFactory::create(
+            logger: $logger,
+        );
+        $this->worker->logger->info('Runtime initialized');
     }
 
     public function run(): void
     {
-        $this->logger?->info('Starting Lambda invocation loop');
+        $this->worker->logger->info('Starting Lambda invocation loop');
         while (true) {
             try {
-                $this->logger?->debug('Processing new invocation');
+                $this->worker->logger->debug('Processing new invocation');
                 $invocation = $this->worker->nextInvocation();
             } catch (\Phambda\Exception\InitializationException $error) {
-                $this->logger?->critical('Fatal error detected. Terminating process.', [
+                $this->worker->logger->critical('Fatal error detected. Terminating process.', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'context' => $error->getContext()
@@ -46,7 +51,7 @@ class Runtime implements RuntimeInterface
                     $result,
                 );
             } catch (PhambdaException $error) {
-                $this->logger?->error('Error occurred while processing invocation', [
+                $this->worker->logger->error('Error occurred while processing invocation', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
@@ -54,7 +59,7 @@ class Runtime implements RuntimeInterface
                 ]);
                 $this->worker->error($invocation->context->awsRequestId, $error);
             } catch (\Throwable $error) {
-                $this->logger?->error('Unexpected error in handler execution', [
+                $this->worker->logger->error('Unexpected error in handler execution', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
@@ -75,8 +80,8 @@ class Runtime implements RuntimeInterface
         }
     }
 
-    public static function execute(HandlerInterface $handler): void
+    public static function execute(HandlerInterface $handler, LoggerInterface $logger = new NullLogger()): void
     {
-        (new self($handler))->run();
+        (new self($handler, $logger))->run();
     }
 }
