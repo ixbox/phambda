@@ -24,8 +24,18 @@ class Runtime implements RuntimeInterface
     {
         $this->logger?->info('Starting Lambda invocation loop');
         while (true) {
-            $this->logger?->debug('Processing new invocation');
-            $invocation = $this->worker->nextInvocation();
+            try {
+                $this->logger?->debug('Processing new invocation');
+                $invocation = $this->worker->nextInvocation();
+            } catch (\Phambda\Exception\InitializationException $error) {
+                $this->logger?->critical('Fatal error detected. Terminating process.', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'context' => $error->getContext()
+                ]);
+                exit(1);
+            }
+
             try {
                 $result = $this->handler->handle(
                     $invocation->event,
@@ -36,18 +46,23 @@ class Runtime implements RuntimeInterface
                     $result,
                 );
             } catch (PhambdaException $error) {
-                $this->logger?->error('Error occurred while processing invocation: ' . $error->getMessage());
-
-                // Add context information if not already present
-                if ($error instanceof RuntimeException && !$error->getInvocationId()) {
-                    $error->setInvocationId($invocation->context->awsRequestId);
-                }
-
+                $this->logger?->error('Error occurred while processing invocation', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'request_id' => $invocation->context->awsRequestId,
+                    'context' => $error instanceof PhambdaException ? $error->getContext() : []
+                ]);
                 $this->worker->error($invocation->context->awsRequestId, $error);
             } catch (\Throwable $error) {
-                $this->logger?->error('Unexpected error: ' . $error->getMessage());
+                $this->logger?->error('Unexpected error in handler execution', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'request_id' => $invocation->context->awsRequestId,
+                    'file' => $error->getFile(),
+                    'line' => $error->getLine()
+                ]);
 
-                // Wrap non-Phambda exceptions
+                // Wrap non-Phambda exceptions with context
                 $runtimeError = RuntimeException::forInvocation(
                     $error->getMessage(),
                     $invocation->context->awsRequestId,
