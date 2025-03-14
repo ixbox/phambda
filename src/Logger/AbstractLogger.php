@@ -47,7 +47,7 @@ abstract class AbstractLogger implements LoggerInterface
                 'time' => $this->getFormattedTime(),
                 'level' => $level,
                 'message' => $message,
-                'context' => array_merge($this->defaultContext, $context)
+                'context' => array_merge($this->defaultContext, $context),
             ];
             error_log($this->formatter->format($data));
         }

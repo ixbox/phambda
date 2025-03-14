@@ -6,7 +6,7 @@ namespace Phambda\Exception;
 
 /**
  * Base exception class for all Phambda-specific exceptions.
- * 
+ *
  * This class extends RuntimeException and adds context handling capabilities
  * for better error tracking and debugging in AWS Lambda environment.
  */

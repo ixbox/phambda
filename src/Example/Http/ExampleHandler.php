@@ -15,7 +15,9 @@ class ExampleHandler implements RequestHandlerInterface
 {
     public function __construct(
         private readonly LoggerInterface $logger
-    ) {}
+    ) {
+        //
+    }
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
@@ -30,8 +32,8 @@ class ExampleHandler implements RequestHandlerInterface
             'function' => [
                 'name' => $context->functionName,
                 'version' => $context->functionVersion,
-                'memory' => $context->memoryLimitInMb
-            ]
+                'memory' => $context->memoryLimitInMb,
+            ],
         ]);
 
         // レスポンスデータの準備
@@ -55,7 +57,7 @@ class ExampleHandler implements RequestHandlerInterface
                 'Set-Cookie' => [
                     'session=' . bin2hex(random_bytes(16)) . '; HttpOnly; Secure; SameSite=Strict; Path=/',
                     'request_id=' . $requestId . '; HttpOnly; Secure; SameSite=Lax; Path=/',
-                    'region=' . ($context->invokedFunctionArn ? explode(':', $context->invokedFunctionArn)[3] : 'unknown') . '; Path=/'
+                    'region=' . ($context->invokedFunctionArn ? explode(':', $context->invokedFunctionArn)[3] : 'unknown') . '; Path=/',
                 ],
             ],
             body: json_encode($responseData, JSON_PRETTY_PRINT)

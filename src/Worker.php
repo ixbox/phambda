@@ -91,7 +91,7 @@ class Worker implements WorkerInterface
             $this->logger->error('Failed to send invocation response', [
                 'error' => $error->getMessage(),
                 'invocation_id' => $invocationId,
-                'type' => $error::class
+                'type' => $error::class,
             ]);
 
             // エラー通知の失敗は致命的なため、error()メソッドに委ねる
@@ -111,7 +111,7 @@ class Worker implements WorkerInterface
             $errorData = [
                 'errorMessage' => $error->getMessage(),
                 'errorType' => $error::class,
-                'stackTrace' => $this->getStackTrace($error)
+                'stackTrace' => $this->getStackTrace($error),
             ];
 
             if ($error instanceof PhambdaException && !empty($error->getContext())) {
@@ -129,7 +129,7 @@ class Worker implements WorkerInterface
             $this->logger->critical('Failed to send error response. Runtime cannot proceed without response.', [
                 'error' => $error->getMessage(),
                 'invocation_id' => $invocationId,
-                'original_error' => $error::class
+                'original_error' => $error::class,
             ]);
             throw InitializationException::fromEnvironment(
                 'Failed to send error response: ' . $error->getMessage(),
@@ -145,7 +145,7 @@ class Worker implements WorkerInterface
             $errorData = [
                 'errorMessage' => $error->getMessage(),
                 'errorType' => $error::class,
-                'stackTrace' => $this->getStackTrace($error)
+                'stackTrace' => $this->getStackTrace($error),
             ];
 
             if ($error instanceof PhambdaException && !empty($error->getContext())) {
@@ -178,7 +178,7 @@ class Worker implements WorkerInterface
     private function getStackTrace(\Throwable $error): array
     {
         return array_map(
-            fn($trace) => sprintf(
+            fn ($trace) => sprintf(
                 '%s:%d - %s%s%s(%s)',
                 $trace['file'] ?? 'unknown',
                 $trace['line'] ?? 0,
@@ -186,7 +186,7 @@ class Worker implements WorkerInterface
                 $trace['type'] ?? '',
                 $trace['function'] ?? '',
                 implode(', ', array_map(
-                    fn($arg) => is_scalar($arg) ? (string)$arg : gettype($arg),
+                    fn ($arg) => is_scalar($arg) ? (string)$arg : gettype($arg),
                     $trace['args'] ?? []
                 ))
             ),

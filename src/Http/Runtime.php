@@ -44,7 +44,7 @@ class Runtime implements RuntimeInterface
                 $this->worker->logger->critical('Fatal initialization error', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
-                    'context' => $error->getContext()
+                    'context' => $error->getContext(),
                 ]);
                 throw $error;
             } catch (PhambdaException $error) {
@@ -52,7 +52,7 @@ class Runtime implements RuntimeInterface
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $awsRequestId,
-                    'context' => $error->getContext()
+                    'context' => $error->getContext(),
                 ]);
 
                 $this->worker->respond(
@@ -65,7 +65,7 @@ class Runtime implements RuntimeInterface
                     'type' => $error::class,
                     'request_id' => $awsRequestId,
                     'file' => $error->getFile(),
-                    'line' => $error->getLine()
+                    'line' => $error->getLine(),
                 ]);
 
                 $runtimeError = RuntimeException::forInvocation(
@@ -103,7 +103,7 @@ class Runtime implements RuntimeInterface
         $errorData = [
             'errorMessage' => $error->getMessage(),
             'errorType' => $error::class,
-            'stackTrace' => explode("\n", $error->getTraceAsString())
+            'stackTrace' => explode("\n", $error->getTraceAsString()),
         ];
 
         if ($error instanceof PhambdaException && !empty($error->getContext())) {

@@ -29,7 +29,7 @@ class NanoLogger implements LoggerInterface
             'time' => (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format(DateTimeImmutable::RFC3339_EXTENDED),
             'level' => $level,
             'message' => $message,
-            'context' => $context
+            'context' => $context,
         ];
 
         error_log(json_encode($data));

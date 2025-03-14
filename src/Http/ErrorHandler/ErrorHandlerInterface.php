@@ -8,7 +8,7 @@ use Psr\Http\Message\ResponseInterface;
 
 /**
  * Interface for error handlers in Phambda's HTTP context.
- * 
+ *
  * Error handlers are responsible for converting exceptions into appropriate HTTP responses.
  * They should handle both Phambda-specific exceptions and general PHP exceptions.
  */

@@ -6,7 +6,7 @@ namespace Phambda\Logger;
 
 /**
  * Formats log data as LTSV (Labeled Tab Separated Values).
- * 
+ *
  * LTSV format: field1:value1\tfield2:value2\t...
  */
 class LtsvFormatter extends AbstractFormatter
@@ -20,7 +20,7 @@ class LtsvFormatter extends AbstractFormatter
     protected function doFormat(array $data): string
     {
         return implode("\t", array_map(
-            fn($k, $v) => sprintf(
+            fn ($k, $v) => sprintf(
                 "%s:%s",
                 $k,
                 is_array($v) ? json_encode(

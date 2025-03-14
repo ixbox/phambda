@@ -36,14 +36,14 @@ class HttpWorker implements HttpWorkerInterface
             $this->logger->info('HTTP request received', [
                 'method' => $request->getMethod(),
                 'path' => $request->getUri()->getPath(),
-                'aws_request_id' => $invocation->context->awsRequestId
+                'aws_request_id' => $invocation->context->awsRequestId,
             ]);
 
             return $request;
         } catch (TransformationException $e) {
             $this->logger->error('Failed to transform Lambda event to HTTP request', [
                 'error' => $e->getMessage(),
-                'context' => $e->getContext()
+                'context' => $e->getContext(),
             ]);
             throw $e;
         }
@@ -54,7 +54,7 @@ class HttpWorker implements HttpWorkerInterface
         try {
             $this->logger->debug('Transforming HTTP response', [
                 'status' => $response->getStatusCode(),
-                'aws_request_id' => $awsRequestId
+                'aws_request_id' => $awsRequestId,
             ]);
 
             $responsePayload = $this->responseTransformer->transform($response);
@@ -64,13 +64,13 @@ class HttpWorker implements HttpWorkerInterface
             $this->logger->info('HTTP response sent', [
                 'status' => $response->getStatusCode(),
                 'reason' => $response->getReasonPhrase(),
-                'aws_request_id' => $awsRequestId
+                'aws_request_id' => $awsRequestId,
             ]);
         } catch (TransformationException $e) {
             $this->logger->error('Failed to transform HTTP response', [
                 'error' => $e->getMessage(),
                 'context' => $e->getContext(),
-                'aws_request_id' => $awsRequestId
+                'aws_request_id' => $awsRequestId,
             ]);
             throw $e;
         }

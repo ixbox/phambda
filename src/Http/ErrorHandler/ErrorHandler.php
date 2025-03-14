@@ -10,7 +10,7 @@ use Psr\Http\Message\ResponseInterface;
 
 /**
  * Standard implementation of the error handler interface for HTTP context.
- * 
+ *
  * This handler generates standardized JSON error responses with appropriate
  * HTTP status codes and context information based on the environment.
  */
@@ -23,7 +23,9 @@ class ErrorHandler implements ErrorHandlerInterface
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly bool $debug = false
-    ) {}
+    ) {
+        //
+    }
 
     /**
      * @inheritDoc

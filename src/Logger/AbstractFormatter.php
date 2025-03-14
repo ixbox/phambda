@@ -6,7 +6,7 @@ namespace Phambda\Logger;
 
 /**
  * Base class for log formatters.
- * 
+ *
  * Provides common functionality for configuration management and Lambda context handling.
  */
 abstract class AbstractFormatter implements LogFormatterInterface
@@ -15,7 +15,9 @@ abstract class AbstractFormatter implements LogFormatterInterface
 
     public function __construct(
         protected readonly ?LoggerConfiguration $config = null
-    ) {}
+    ) {
+        //
+    }
 
     /**
      * Format log data with context information.

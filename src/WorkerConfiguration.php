@@ -12,7 +12,9 @@ class WorkerConfiguration
     public function __construct(
         public readonly string $baseUri,
         public readonly LoggerInterface $logger,
-    ) {}
+    ) {
+        //
+    }
 
     public static function fromEnvironment(?LoggerInterface $logger = null): self
     {

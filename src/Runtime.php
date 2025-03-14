@@ -36,7 +36,7 @@ class Runtime implements RuntimeInterface
                 $this->worker->logger->critical('Fatal error detected. Terminating process.', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
-                    'context' => $error->getContext()
+                    'context' => $error->getContext(),
                 ]);
                 exit(1);
             }
@@ -55,7 +55,7 @@ class Runtime implements RuntimeInterface
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
-                    'context' => $error instanceof PhambdaException ? $error->getContext() : []
+                    'context' => $error instanceof PhambdaException ? $error->getContext() : [],
                 ]);
                 $this->worker->error($invocation->context->awsRequestId, $error);
             } catch (\Throwable $error) {
@@ -64,7 +64,7 @@ class Runtime implements RuntimeInterface
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
                     'file' => $error->getFile(),
-                    'line' => $error->getLine()
+                    'line' => $error->getLine(),
                 ]);
 
                 // Wrap non-Phambda exceptions with context
