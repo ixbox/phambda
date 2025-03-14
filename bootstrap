@@ -3,9 +3,8 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
-$logger = new \Phambda\Logger\NanoLogger();
-$runtime = new \Phambda\Http\Runtime(
-    new \Phambda\Example\Http\ExampleHandler($logger),
-    $logger,
+\Phambda\Http\Runtime::execute(
+    new \Phambda\Example\Http\ExampleHandler(
+        new \Phambda\Logger\NanoLogger()
+    ),
 );
-$runtime->run();

@@ -4,6 +4,7 @@ namespace Phambda\Factory;
 
 use Http\Discovery\Psr18Client;
 use Phambda\Worker;
+use Phambda\WorkerConfiguration;
 use Phambda\WorkerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
@@ -12,6 +13,7 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class WorkerFactory
 {
@@ -19,16 +21,18 @@ class WorkerFactory
         ?ClientInterface $client = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-        ?LoggerInterface $logger = null,
+        ?WorkerConfiguration $configuration = null,
     ): WorkerInterface {
-        $logger?->info('Creating Worker');
+        $configuration?->logger->info('Creating Worker');
+
+        $configuration ??= WorkerConfiguration::fromEnvironment();
         $psr18client = new Psr18Client();
 
         $client ??= $psr18client;
         $requestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
 
-        return new Worker($client, $requestFactory, $streamFactory, null, $logger);
+        return new Worker($client, $requestFactory, $streamFactory, $configuration);
     }
 
     /**

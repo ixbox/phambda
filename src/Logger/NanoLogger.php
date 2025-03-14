@@ -15,7 +15,9 @@ class NanoLogger implements LoggerInterface
 
     public function __construct(
         private readonly bool $debugEnabled = false
-    ) {}
+    ) {
+        //
+    }
 
     public function log($level, string|Stringable $message, array $context = []): void
     {
