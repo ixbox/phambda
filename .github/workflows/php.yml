@@ -39,9 +39,9 @@ jobs:
             ${{ runner.os }}-php-${{ hashFiles('**/composer.json') }}
 
       - name: Install dependencies
-        run: |
-          composer config --global github-protocols https
-          composer install --prefer-dist --no-progress
+        env:
+          COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{ secrets.GITHUB_TOKEN }}"}}'
+        run: composer install --prefer-dist --no-progress --no-interaction
 
       - name: Run test suite
         run: composer run-script test
