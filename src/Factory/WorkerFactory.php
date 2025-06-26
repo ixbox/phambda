@@ -25,7 +25,7 @@ class WorkerFactory
     ): WorkerInterface {
         $logger->info('Creating Worker');
 
-        $configuration ??= WorkerConfiguration::fromEnvironment($logger);
+        $configuration = WorkerConfiguration::fromEnvironment($logger);
         $psr18client = new Psr18Client();
 
         $client ??= $psr18client;
@@ -41,12 +41,13 @@ class WorkerFactory
      */
     public static function createFromContainer(ContainerInterface $container): Worker
     {
+        $logger = $container->get(LoggerInterface::class);
+
         return new Worker(
             $container->get(ClientInterface::class),
             $container->get(RequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
-            null,
-            $container->get(LoggerInterface::class),
+            WorkerConfiguration::fromEnvironment($logger),
         );
     }
 }

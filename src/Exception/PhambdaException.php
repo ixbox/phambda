@@ -68,6 +68,18 @@ abstract class PhambdaException extends \RuntimeException
     }
 
     /**
+     * Replace the entire context array.
+     *
+     * @param array<string, mixed> $context
+     * @return static
+     */
+    protected function setContext(array $context): static
+    {
+        $this->context = $context;
+        return $this;
+    }
+
+    /**
      * Convert the exception to a string including context information.
      *
      * @return string
