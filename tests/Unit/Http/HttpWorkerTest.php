@@ -45,9 +45,8 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
-            null,
             $this->requestTransformer,
-            $this->responseTransformer
+            $this->responseTransformer,
         );
     }
 
@@ -259,9 +258,8 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
-            null,
-            null,
-            $this->responseTransformer
+            $this->requestTransformer,
+            $this->responseTransformer,
         );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
@@ -328,9 +326,8 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
-            null,
-            null,
-            $this->responseTransformer
+            $this->requestTransformer,
+            $this->responseTransformer,
         );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが
@@ -397,9 +394,8 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
-            null,
-            null,
-            $this->responseTransformer
+            $this->requestTransformer,
+            $this->responseTransformer,
         );
 
         // ResponseTransformerがレスポンスを変換した結果のJSONが

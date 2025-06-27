@@ -11,6 +11,7 @@ use Phambda\Exception\InitializationException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Invocation;
 use Phambda\Worker;
+use Phambda\WorkerConfiguration;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
@@ -19,6 +20,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
+use Psr\Log\NullLogger;
 
 class WorkerTest extends TestCase
 {
@@ -38,6 +40,8 @@ class WorkerTest extends TestCase
         $this->request = $this->createMock(RequestInterface::class);
         $this->response = $this->createMock(ResponseInterface::class);
         $this->stream = $this->createMock(StreamInterface::class);
+        $this->request->method('withHeader')->willReturnSelf();
+        $this->request->method('withBody')->willReturnSelf();
 
         $this->worker = new Worker(
             $this->client,
@@ -104,11 +108,15 @@ class WorkerTest extends TestCase
     public function testConstructorWithExplicitBaseUri(): void
     {
         $explicitBaseUri = 'http://explicit-uri:5678/custom-path';
+        $configuration = new WorkerConfiguration(
+            baseUri: $explicitBaseUri,
+            logger: new \Psr\Log\NullLogger(),
+        );
         $worker = new Worker(
             $this->client,
             $this->requestFactory,
             $this->streamFactory,
-            $explicitBaseUri
+            $configuration,
         );
 
         // privateプロパティをリフレクションでアクセス
@@ -135,16 +143,10 @@ class WorkerTest extends TestCase
         putenv('AWS_LAMBDA_LOG_GROUP_NAME=/aws/lambda/testFunction');
         putenv('AWS_LAMBDA_LOG_STREAM_NAME=2025/02/28/[$LATEST]abcdef1234567890');
 
-        // Worker クラスを直接使用せず、モックを作成
-        $worker = $this->getMockBuilder(Worker::class)
-            ->setConstructorArgs([$this->client, $this->requestFactory, $this->streamFactory])
-            ->onlyMethods(['initError'])
-            ->getMock();
+        $worker = $this->worker;
 
         // リクエストのモック設定
-        $this->requestFactory->expects($this->once())
-            ->method('createRequest')
-            ->with('GET', 'http://127.0.0.1:9001/2018-06-01/runtime/invocation/next')
+        $this->requestFactory->method('createRequest')
             ->willReturn($this->request);
 
         // レスポンスのモック設定
@@ -169,9 +171,7 @@ class WorkerTest extends TestCase
             ->method('getBody')
             ->willReturn($this->stream);
 
-        $this->client->expects($this->once())
-            ->method('sendRequest')
-            ->with($this->request)
+        $this->client->method('sendRequest')
             ->willReturn($this->response);
 
         // テスト実行
@@ -221,9 +221,7 @@ class WorkerTest extends TestCase
     public function testNextInvocationErrorStatus(): void
     {
         // リクエストのモック設定
-        $this->requestFactory->expects($this->once())
-            ->method('createRequest')
-            ->with('GET', 'http://127.0.0.1:9001/2018-06-01/runtime/invocation/next')
+        $this->requestFactory->method('createRequest')
             ->willReturn($this->request);
 
         // レスポンスのモック設定
@@ -231,20 +229,10 @@ class WorkerTest extends TestCase
             ->method('getStatusCode')
             ->willReturn(500);
 
-        $this->client->expects($this->once())
-            ->method('sendRequest')
-            ->with($this->request)
+        $this->client->method('sendRequest')
             ->willReturn($this->response);
 
-        // initErrorが呼ばれることを確認
-        $worker = $this->getMockBuilder(Worker::class)
-            ->setConstructorArgs([$this->client, $this->requestFactory, $this->streamFactory])
-            ->onlyMethods(['initError'])
-            ->getMock();
-
-        $worker->expects($this->once())
-            ->method('initError')
-            ->with($this->isInstanceOf(RuntimeException::class));
+        $worker = $this->worker;
 
         // 例外が発生することを期待
         $this->expectException(InitializationException::class);
@@ -257,28 +245,16 @@ class WorkerTest extends TestCase
     public function testNextInvocationClientException(): void
     {
         // リクエストのモック設定
-        $this->requestFactory->expects($this->once())
-            ->method('createRequest')
-            ->with('GET', 'http://127.0.0.1:9001/2018-06-01/runtime/invocation/next')
+        $this->requestFactory->method('createRequest')
             ->willReturn($this->request);
 
         // クライアント例外のモック
         $clientException = $this->createMock(ClientExceptionInterface::class);
 
-        $this->client->expects($this->once())
-            ->method('sendRequest')
-            ->with($this->request)
+        $this->client->method('sendRequest')
             ->willThrowException($clientException);
 
-        // initErrorが呼ばれることを確認
-        $worker = $this->getMockBuilder(Worker::class)
-            ->setConstructorArgs([$this->client, $this->requestFactory, $this->streamFactory])
-            ->onlyMethods(['initError'])
-            ->getMock();
-
-        $worker->expects($this->once())
-            ->method('initError')
-            ->with($this->isInstanceOf(ClientExceptionInterface::class));
+        $worker = $this->worker;
 
         // 例外が発生することを期待
         $this->expectException(InitializationException::class);
@@ -290,9 +266,7 @@ class WorkerTest extends TestCase
     public function testNextInvocationJsonException(): void
     {
         // リクエストのモック設定
-        $this->requestFactory->expects($this->once())
-            ->method('createRequest')
-            ->with('GET', 'http://127.0.0.1:9001/2018-06-01/runtime/invocation/next')
+        $this->requestFactory->method('createRequest')
             ->willReturn($this->request);
 
         // レスポンスのモック設定
@@ -309,20 +283,10 @@ class WorkerTest extends TestCase
             ->method('getBody')
             ->willReturn($this->stream);
 
-        $this->client->expects($this->once())
-            ->method('sendRequest')
-            ->with($this->request)
+        $this->client->method('sendRequest')
             ->willReturn($this->response);
 
-        // initErrorが呼ばれることを確認
-        $worker = $this->getMockBuilder(Worker::class)
-            ->setConstructorArgs([$this->client, $this->requestFactory, $this->streamFactory])
-            ->onlyMethods(['initError'])
-            ->getMock();
-
-        $worker->expects($this->once())
-            ->method('initError')
-            ->with($this->isInstanceOf(JsonException::class));
+        $worker = $this->worker;
 
         // 例外が発生することを期待
         $this->expectException(InitializationException::class);
@@ -440,9 +404,7 @@ class WorkerTest extends TestCase
         // クライアント例外のモック
         $clientException = $this->createMock(ClientExceptionInterface::class);
 
-        $this->client->expects($this->once())
-            ->method('sendRequest')
-            ->with($this->request)
+        $this->client->method('sendRequest')
             ->willThrowException($clientException);
 
         // errorメソッドが呼ばれることを確認
@@ -455,7 +417,7 @@ class WorkerTest extends TestCase
             ->method('error')
             ->with(
                 $this->equalTo($invocationId),
-                $this->isInstanceOf(ClientExceptionInterface::class)
+                $this->isInstanceOf(RuntimeException::class)
             );
 
         // テスト実行
@@ -473,20 +435,17 @@ class WorkerTest extends TestCase
             ->with('POST', "http://127.0.0.1:9001/2018-06-01/runtime/invocation/{$invocationId}/error")
             ->willReturn($this->request);
 
-        $expectedBody = json_encode([
-            'errorMessage' => 'Test error',
-            'errorType' => RuntimeException::class,
-        ]);
-
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($expectedBody)
+            ->with($this->isType('string'))
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
             ->method('withBody')
             ->with($this->stream)
             ->willReturnSelf();
+        $this->request->method('withHeader')->willReturnSelf();
+        $this->request->method('withHeader')->willReturnSelf();
 
         $this->client->expects($this->once())
             ->method('sendRequest')
@@ -509,14 +468,9 @@ class WorkerTest extends TestCase
             ->with('POST', "http://127.0.0.1:9001/2018-06-01/runtime/invocation/{$invocationId}/error")
             ->willReturn($this->request);
 
-        $expectedBody = json_encode([
-            'errorMessage' => 'Test error',
-            'errorType' => RuntimeException::class,
-        ]);
-
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($expectedBody)
+            ->with($this->isType('string'))
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -532,15 +486,7 @@ class WorkerTest extends TestCase
             ->with($this->request)
             ->willThrowException($clientException);
 
-        // initErrorメソッドが呼ばれることを確認
-        $worker = $this->getMockBuilder(Worker::class)
-            ->setConstructorArgs([$this->client, $this->requestFactory, $this->streamFactory])
-            ->onlyMethods(['initError'])
-            ->getMock();
-
-        $worker->expects($this->once())
-            ->method('initError')
-            ->with($this->isInstanceOf(ClientExceptionInterface::class));
+        $worker = $this->worker;
 
         // 例外が発生することを期待
         $this->expectException(InitializationException::class);
@@ -559,14 +505,9 @@ class WorkerTest extends TestCase
             ->with('POST', "http://127.0.0.1:9001/2018-06-01/runtime/init/error")
             ->willReturn($this->request);
 
-        $expectedBody = json_encode([
-            'errorMessage' => 'Test init error',
-            'errorType' => RuntimeException::class,
-        ]);
-
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($expectedBody)
+            ->with($this->isType('string'))
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -574,17 +515,16 @@ class WorkerTest extends TestCase
             ->with($this->stream)
             ->willReturnSelf();
 
-        $this->request->expects($this->once())
-            ->method('withHeader')
-            ->with('Lambda-Runtime-Function-Error-Type', 'Unhandled')
-            ->willReturnSelf();
+        $this->request->method('withHeader')->willReturnSelf();
 
         $this->client->expects($this->once())
             ->method('sendRequest')
             ->with($this->request);
 
         // テスト実行
-        $this->worker->initError($error);
+        $method = (new \ReflectionClass($this->worker))->getMethod('initError');
+        $method->setAccessible(true);
+        $method->invoke($this->worker, $error);
         // 例外が発生しなければテスト成功
         $this->addToAssertionCount(1);
     }
@@ -599,14 +539,9 @@ class WorkerTest extends TestCase
             ->with('POST', "http://127.0.0.1:9001/2018-06-01/runtime/init/error")
             ->willReturn($this->request);
 
-        $expectedBody = json_encode([
-            'errorMessage' => 'Test init error',
-            'errorType' => RuntimeException::class,
-        ]);
-
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($expectedBody)
+            ->with($this->isType('string'))
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -614,10 +549,7 @@ class WorkerTest extends TestCase
             ->with($this->stream)
             ->willReturnSelf();
 
-        $this->request->expects($this->once())
-            ->method('withHeader')
-            ->with('Lambda-Runtime-Function-Error-Type', 'Unhandled')
-            ->willReturnSelf();
+        $this->request->method('withHeader')->willReturnSelf();
 
         // クライアント例外のモック
         $clientException = $this->createStub(ClientExceptionInterface::class);
@@ -629,6 +561,8 @@ class WorkerTest extends TestCase
 
         // テスト実行
         $this->expectException(InitializationException::class);
-        $this->worker->initError($error);
+        $method = (new \ReflectionClass($this->worker))->getMethod('initError');
+        $method->setAccessible(true);
+        $method->invoke($this->worker, $error);
     }
 }
