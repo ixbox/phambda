@@ -74,13 +74,17 @@ class HttpWorkerFactory
      * @throws NotFoundExceptionInterface
      * @throws ContainerExceptionInterface
      */
-    public static function createFromContainer(ContainerInterface $container): Worker
+    public static function createFromContainer(ContainerInterface $container): HttpWorkerInterface
     {
-        return new Worker(
+        $logger = $container->get(LoggerInterface::class);
+
+        return new HttpWorker(
             $container->get(WorkerInterface::class),
             $container->get(ServerRequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
-            WorkerConfiguration::fromEnvironment($container->get(LoggerInterface::class)),
+            $container->get(RequestTransformerInterface::class),
+            $container->get(ResponseTransformerInterface::class),
+            $logger,
         );
     }
 }
