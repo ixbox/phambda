@@ -65,7 +65,6 @@ class WorkerTest extends TestCase
         // privateプロパティをリフレクションでアクセス
         $reflection = new \ReflectionClass($worker);
         $property = $reflection->getProperty('baseUri');
-        $property->setAccessible(true);
         $baseUri = $property->getValue($worker);
 
         // 実際の値に合わせてアサーションを修正
@@ -92,7 +91,6 @@ class WorkerTest extends TestCase
         // privateプロパティをリフレクションでアクセス
         $reflection = new \ReflectionClass($worker);
         $property = $reflection->getProperty('baseUri');
-        $property->setAccessible(true);
         $baseUri = $property->getValue($worker);
 
         $this->assertSame('http://custom-api:1234/2018-06-01', $baseUri);
@@ -122,7 +120,6 @@ class WorkerTest extends TestCase
         // privateプロパティをリフレクションでアクセス
         $reflection = new \ReflectionClass($worker);
         $property = $reflection->getProperty('baseUri');
-        $property->setAccessible(true);
         $baseUri = $property->getValue($worker);
 
         $this->assertSame($explicitBaseUri, $baseUri);
@@ -437,7 +434,7 @@ class WorkerTest extends TestCase
 
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($this->isType('string'))
+            ->with($this->isString())
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -470,7 +467,7 @@ class WorkerTest extends TestCase
 
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($this->isType('string'))
+            ->with($this->isString())
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -507,7 +504,7 @@ class WorkerTest extends TestCase
 
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($this->isType('string'))
+            ->with($this->isString())
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -523,7 +520,6 @@ class WorkerTest extends TestCase
 
         // テスト実行
         $method = (new \ReflectionClass($this->worker))->getMethod('initError');
-        $method->setAccessible(true);
         $method->invoke($this->worker, $error);
         // 例外が発生しなければテスト成功
         $this->addToAssertionCount(1);
@@ -541,7 +537,7 @@ class WorkerTest extends TestCase
 
         $this->streamFactory->expects($this->once())
             ->method('createStream')
-            ->with($this->isType('string'))
+            ->with($this->isString())
             ->willReturn($this->stream);
 
         $this->request->expects($this->once())
@@ -562,7 +558,6 @@ class WorkerTest extends TestCase
         // テスト実行
         $this->expectException(InitializationException::class);
         $method = (new \ReflectionClass($this->worker))->getMethod('initError');
-        $method->setAccessible(true);
         $method->invoke($this->worker, $error);
     }
 }

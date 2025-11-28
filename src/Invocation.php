@@ -10,5 +10,6 @@ class Invocation
         public readonly Event $event,
         public readonly Context $context
     ) {
+        //
     }
 }

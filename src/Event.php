@@ -14,6 +14,7 @@ class Event implements ArrayAccess, JsonSerializable
     public function __construct(
         private readonly array $event,
     ) {
+        ////
     }
 
     /**
