@@ -1,4 +1,4 @@
-FROM php:8.1-cli-alpine
+FROM php:8.5-cli-alpine
 
 WORKDIR /var/runtime
 

@@ -15,7 +15,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ["8.2", "8.3", "8.4", "8.5"]
+        php-version: ["8.3", "8.4", "8.5"]
 
     steps:
       - name: Setup PHP with PECL extension
@@ -39,12 +39,7 @@ jobs:
             ${{ runner.os }}-php-${{ hashFiles('**/composer.json') }}
 
       - name: Install dependencies
-        run: |
-          if [ "${{ matrix.php-version }}" == "8.5" ]; then
-            composer install --prefer-dist --no-progress --ignore-platform-reqs
-          else
-            composer install --prefer-dist --no-progress
-          fi
+        run: composer install --prefer-dist --no-progress
 
       - name: Run test suite
         run: composer run-script test
