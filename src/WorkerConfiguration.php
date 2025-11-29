@@ -13,15 +13,15 @@ class WorkerConfiguration
         public readonly string $baseUri,
         public readonly LoggerInterface $logger,
     ) {
-        //
     }
 
-    public static function fromEnvironment(?LoggerInterface $logger = null): self
-    {
+    public static function fromEnvironment(
+        LoggerInterface $logger = new NullLogger(),
+    ): self {
         $awsLambdaRuntimeApi = getenv('AWS_LAMBDA_RUNTIME_API') ?: '127.0.0.1:9001';
         return new self(
             baseUri: "http://{$awsLambdaRuntimeApi}/2018-06-01",
-            logger: $logger ?? new NullLogger()
+            logger: $logger,
         );
     }
 }

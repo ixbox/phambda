@@ -8,17 +8,17 @@ use ArrayAccess;
 use Error;
 use JsonSerializable;
 
-class Context implements JsonSerializable, ArrayAccess
+readonly class Context implements JsonSerializable, ArrayAccess
 {
     public function __construct(
-        public readonly string $functionName,
-        public readonly string $functionVersion,
-        public readonly string $invokedFunctionArn,
-        public readonly string $memoryLimitInMb,
-        public readonly string $awsRequestId,
-        public readonly string $logGroupName,
-        public readonly string $logStreamName,
-        public readonly string $deadlineMs,
+        public string $functionName,
+        public string $functionVersion,
+        public string $invokedFunctionArn,
+        public string $memoryLimitInMb,
+        public string $awsRequestId,
+        public string $logGroupName,
+        public string $logStreamName,
+        public string $deadlineMs,
     ) {
     }
 

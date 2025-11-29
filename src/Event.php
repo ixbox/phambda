@@ -9,12 +9,11 @@ use Error;
 use JsonException;
 use JsonSerializable;
 
-class Event implements ArrayAccess, JsonSerializable
+readonly class Event implements ArrayAccess, JsonSerializable
 {
     public function __construct(
-        private readonly array $event,
+        private array $event,
     ) {
-        ////
     }
 
     /**

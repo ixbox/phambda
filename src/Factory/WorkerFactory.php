@@ -18,10 +18,10 @@ use Psr\Log\NullLogger;
 class WorkerFactory
 {
     public static function create(
+        LoggerInterface $logger = new NullLogger(),
         ?ClientInterface $client = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-        LoggerInterface $logger = new NullLogger(),
     ): WorkerInterface {
         $logger->info('Creating Worker');
 
