@@ -13,7 +13,6 @@ use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
-use Phambda\WorkerConfiguration;
 use Throwable;
 
 class Worker implements WorkerInterface

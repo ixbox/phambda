@@ -13,10 +13,10 @@ it('filters log levels correctly', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(fn($data) => $data['level'] === LogLevel::INFO))
+        ->with(Mockery::on(fn ($data) => $data['level'] === LogLevel::INFO))
         ->andReturn('');
 
-    $logger = new class($formatter, LogLevel::INFO) extends AbstractLogger {
+    $logger = new class ($formatter, LogLevel::INFO) extends AbstractLogger {
         public function __construct($formatter, $minimumLevel)
         {
             parent::__construct($formatter, $minimumLevel);
@@ -33,10 +33,10 @@ it('uses environment timezone when no configuration is provided', function (): v
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+09:00')))
+        ->with(Mockery::on(fn ($data) => str_contains((string) $data['time'], '+09:00')))
         ->andReturn('');
 
-    $logger = new class($formatter, LogLevel::DEBUG) extends AbstractLogger {
+    $logger = new class ($formatter, LogLevel::DEBUG) extends AbstractLogger {
         public function __construct($formatter, $minimumLevel)
         {
             parent::__construct($formatter, $minimumLevel);
@@ -58,7 +58,7 @@ it('prioritizes configuration timezone over environment variable', function (): 
         ->andReturn('');
 
     $config = new LoggerConfiguration('Asia/Tokyo');
-    $logger = new class($formatter, LogLevel::DEBUG, [], $config) extends AbstractLogger {
+    $logger = new class ($formatter, LogLevel::DEBUG, [], $config) extends AbstractLogger {
         public function __construct($formatter, $minimumLevel, $defaultContext, $config)
         {
             parent::__construct($formatter, $minimumLevel, $defaultContext, $config);
@@ -72,10 +72,10 @@ it('uses UTC timezone when no configuration or environment variable is provided'
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+00:00')))
+        ->with(Mockery::on(fn ($data) => str_contains((string) $data['time'], '+00:00')))
         ->andReturn('');
 
-    $logger = new class($formatter, LogLevel::DEBUG) extends AbstractLogger {
+    $logger = new class ($formatter, LogLevel::DEBUG) extends AbstractLogger {
         public function __construct($formatter, $minimumLevel)
         {
             parent::__construct($formatter, $minimumLevel);
@@ -89,11 +89,11 @@ it('uses correct timezone from configuration', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
         ->once()
-        ->with(Mockery::on(fn($data) => str_contains((string) $data['time'], '+09:00')))
+        ->with(Mockery::on(fn ($data) => str_contains((string) $data['time'], '+09:00')))
         ->andReturn('');
 
     $config = new LoggerConfiguration('Asia/Tokyo');
-    $logger = new class($formatter, LogLevel::DEBUG, [], $config) extends AbstractLogger {
+    $logger = new class ($formatter, LogLevel::DEBUG, [], $config) extends AbstractLogger {
         public function __construct($formatter, $minimumLevel, $defaultContext, $config)
         {
             parent::__construct($formatter, $minimumLevel, $defaultContext, $config);

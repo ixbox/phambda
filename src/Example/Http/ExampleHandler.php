@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Phambda\Example\Http;
 
 use Nyholm\Psr7\Response;
-use Phambda\Context;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;

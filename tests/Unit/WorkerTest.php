@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use JsonException;
 use Phambda\Context;
 use Phambda\Event;
 use Phambda\Exception\InitializationException;
@@ -20,7 +19,6 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\StreamInterface;
-use Psr\Log\NullLogger;
 
 class WorkerTest extends TestCase
 {
