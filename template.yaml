@@ -11,7 +11,8 @@ Resources:
   App:
     Type: AWS::Serverless::Function
     Properties:
-      PackageType: Image
+      Runtime: provided.al2023
+      Handler: bootstrap
       Architectures:
         - arm64
       Events:
@@ -21,6 +22,4 @@ Resources:
             Path: /hello
             Method: get
     Metadata:
-      DockerTag: 1.0.0
-      DockerContext: .
-      Dockerfile: Dockerfile
+      BuildMethod: makefile
