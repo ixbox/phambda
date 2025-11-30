@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Phambda;
 
+use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\WorkerFactory;
@@ -32,16 +33,6 @@ class Runtime implements RuntimeInterface
             try {
                 $this->worker->logger->debug('Processing new invocation');
                 $invocation = $this->worker->nextInvocation();
-            } catch (\Phambda\Exception\InitializationException $error) {
-                $this->worker->logger->critical('Fatal error detected. Terminating process.', [
-                    'error' => $error->getMessage(),
-                    'type' => $error::class,
-                    'context' => $error->getContext(),
-                ]);
-                exit(1);
-            }
-
-            try {
                 $result = $this->handler->handle(
                     $invocation->event,
                     $invocation->context,
@@ -50,6 +41,13 @@ class Runtime implements RuntimeInterface
                     $invocation->context->awsRequestId,
                     $result,
                 );
+            } catch (InitializationException $error) {
+                $this->worker->logger->critical('Fatal error detected. Terminating process.', [
+                    'error' => $error->getMessage(),
+                    'type' => $error::class,
+                    'context' => $error->getContext(),
+                ]);
+                throw $error;
             } catch (PhambdaException $error) {
                 $this->worker->logger->error('Error occurred while processing invocation', [
                     'error' => $error->getMessage(),

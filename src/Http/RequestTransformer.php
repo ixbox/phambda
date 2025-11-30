@@ -37,7 +37,7 @@ class RequestTransformer implements RequestTransformerInterface
 
             $request = $this->requestFactory->createServerRequest($method, $path, (array) $context);
             $request = $request
-                ->withAttribute('awsRequestId', $context['awsRequestId'])
+                ->withAttribute('awsRequestId', $context->awsRequestId)
                 ->withAttribute('lambda-context', $context);
 
             // Add headers
@@ -61,8 +61,8 @@ class RequestTransformer implements RequestTransformerInterface
                 [
                     'event' => json_encode($event),
                     'context' => [
-                        'awsRequestId' => $context['awsRequestId'] ?? null,
-                        'functionName' => $context['functionName'] ?? null,
+                        'awsRequestId' => $context->awsRequestId,
+                        'functionName' => $context->functionName,
                     ],
                 ],
                 0,
