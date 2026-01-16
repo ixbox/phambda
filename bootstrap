@@ -1,2 +1,3 @@
 #!/bin/bash
-./php main.php
+# PHP binary is provided by the Layer at /opt/bin/php
+/opt/bin/php /var/task/main.php

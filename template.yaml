@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: Sample Template
 
@@ -8,6 +8,21 @@ Globals:
     Timeout: 3
 
 Resources:
+  # PHP Runtime Layer (static-php-cli)
+  PhpLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: php-runtime
+      Description: PHP 8.4 runtime built with static-php-cli
+      ContentUri: .
+      CompatibleRuntimes:
+        - provided.al2023
+      CompatibleArchitectures:
+        - arm64
+    Metadata:
+      BuildMethod: makefile
+      BuildArchitecture: arm64
+
   App:
     Type: AWS::Serverless::Function
     Properties:
@@ -15,6 +30,8 @@ Resources:
       Handler: bootstrap
       Architectures:
         - arm64
+      Layers:
+        - !Ref PhpLayer
       Events:
         HelloWorld:
           Type: HttpApi
