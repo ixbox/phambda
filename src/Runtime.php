@@ -30,6 +30,7 @@ class Runtime implements RuntimeInterface
     {
         $this->logger->info('Starting Lambda invocation loop');
         while (true) {
+            $invocation = null;
             try {
                 $this->logger->debug('Processing new invocation');
                 $invocation = $this->worker->nextInvocation();
@@ -49,14 +50,30 @@ class Runtime implements RuntimeInterface
                 ]);
                 throw $error;
             } catch (PhambdaException $error) {
+                if ($invocation === null) {
+                    throw InitializationException::fromEnvironment(
+                        'Invocation failed before context was available: ' . $error->getMessage(),
+                        0,
+                        $error
+                    );
+                }
+
                 $this->logger->error('Error occurred while processing invocation', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
-                    'context' => $error instanceof PhambdaException ? $error->getContext() : [],
+                    'context' => $error->getContext(),
                 ]);
                 $this->worker->error($invocation->context->awsRequestId, $error);
             } catch (\Throwable $error) {
+                if ($invocation === null) {
+                    throw InitializationException::fromEnvironment(
+                        'Unexpected runtime error before invocation was available: ' . $error->getMessage(),
+                        0,
+                        $error
+                    );
+                }
+
                 $this->logger->error('Unexpected error in handler execution', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,

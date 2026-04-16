@@ -35,6 +35,7 @@ class Runtime implements RuntimeInterface
         $this->logger->info('Starting HTTP request handling loop');
 
         while (true) {
+            $awsRequestId = null;
             try {
                 $request = $this->worker->nextRequest();
                 $awsRequestId = $this->validateRequest($request);
@@ -48,6 +49,14 @@ class Runtime implements RuntimeInterface
                 ]);
                 throw $error;
             } catch (PhambdaException $error) {
+                if ($awsRequestId === null) {
+                    throw InitializationException::fromEnvironment(
+                        'HTTP invocation failed before request id was available: ' . $error->getMessage(),
+                        0,
+                        $error
+                    );
+                }
+
                 $this->logger->error('Request handling error', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
@@ -60,6 +69,14 @@ class Runtime implements RuntimeInterface
                     $this->createErrorResponse($error)
                 );
             } catch (\Throwable $error) {
+                if ($awsRequestId === null) {
+                    throw InitializationException::fromEnvironment(
+                        'Unexpected HTTP runtime error before request id was available: ' . $error->getMessage(),
+                        0,
+                        $error
+                    );
+                }
+
                 $this->logger->error('Unexpected runtime error', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
@@ -86,7 +103,7 @@ class Runtime implements RuntimeInterface
     private function validateRequest(ServerRequestInterface $request): string
     {
         $awsRequestId = $request->getAttribute('awsRequestId');
-        if (!$awsRequestId) {
+        if (!is_string($awsRequestId) || $awsRequestId === '') {
             throw TransformationException::forRequest(
                 'Request is missing awsRequestId attribute',
                 ['request_path' => $request->getUri()->getPath()]
@@ -113,9 +130,12 @@ class Runtime implements RuntimeInterface
         $response = $psr17Factory->createResponse(500)
             ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json');
 
-        $errorBody = $psr17Factory->createStream(
-            json_encode($errorData, JSON_PRETTY_PRINT)
-        );
+        $errorJson = json_encode($errorData, JSON_PRETTY_PRINT);
+        if ($errorJson === false) {
+            $errorJson = '{"errorMessage":"Failed to encode error response"}';
+        }
+
+        $errorBody = $psr17Factory->createStream($errorJson);
 
         return $response->withBody($errorBody);
     }
