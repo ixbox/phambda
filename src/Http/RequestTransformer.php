@@ -45,8 +45,9 @@ class RequestTransformer implements RequestTransformerInterface
                 $request = $request->withHeader($name, $value);
             }
 
-            // Add cookies and query parameters
-            $request = $request->withCookieParams((array) ($event['cookies'] ?? []));
+            $request = $request->withCookieParams(
+                $this->parseCookieParams((array) ($event['cookies'] ?? []))
+            );
             $request = $request->withQueryParams((array) ($event['queryStringParameters'] ?? []));
 
             // Add body if present
@@ -69,5 +70,28 @@ class RequestTransformer implements RequestTransformerInterface
                 $e
             );
         }
+    }
+
+    /**
+     * Convert Lambda cookie strings like ["a=1", "b=2"] into PSR-7 cookie params.
+     *
+     * @param array<int, string> $cookies
+     * @return array<string, string>
+     */
+    private function parseCookieParams(array $cookies): array
+    {
+        $cookieParams = [];
+
+        foreach ($cookies as $cookie) {
+            $parts = explode('=', $cookie, 2);
+            $name = trim($parts[0]);
+            if ($name === '') {
+                continue;
+            }
+
+            $cookieParams[$name] = $parts[1] ?? '';
+        }
+
+        return $cookieParams;
     }
 }
