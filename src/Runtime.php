@@ -17,21 +17,21 @@ class Runtime implements RuntimeInterface
 
     public function __construct(
         private readonly HandlerInterface $handler,
-        ?LoggerInterface $logger = null,
+        private readonly LoggerInterface $logger = new NullLogger(),
         ?WorkerInterface $worker = null,
     ) {
         $this->worker = $worker ?? WorkerFactory::create(
             logger: $logger,
         );
-        $this->worker->logger->info('Runtime initialized');
+        $this->logger->info('Runtime initialized');
     }
 
     public function run(): void
     {
-        $this->worker->logger->info('Starting Lambda invocation loop');
+        $this->logger->info('Starting Lambda invocation loop');
         while (true) {
             try {
-                $this->worker->logger->debug('Processing new invocation');
+                $this->logger->debug('Processing new invocation');
                 $invocation = $this->worker->nextInvocation();
                 $result = $this->handler->handle(
                     $invocation->event,
@@ -42,14 +42,14 @@ class Runtime implements RuntimeInterface
                     $result,
                 );
             } catch (InitializationException $error) {
-                $this->worker->logger->critical('Fatal error detected. Terminating process.', [
+                $this->logger->critical('Fatal error detected. Terminating process.', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'context' => $error->getContext(),
                 ]);
                 throw $error;
             } catch (PhambdaException $error) {
-                $this->worker->logger->error('Error occurred while processing invocation', [
+                $this->logger->error('Error occurred while processing invocation', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
@@ -57,7 +57,7 @@ class Runtime implements RuntimeInterface
                 ]);
                 $this->worker->error($invocation->context->awsRequestId, $error);
             } catch (\Throwable $error) {
-                $this->worker->logger->error('Unexpected error in handler execution', [
+                $this->logger->error('Unexpected error in handler execution', [
                     'error' => $error->getMessage(),
                     'type' => $error::class,
                     'request_id' => $invocation->context->awsRequestId,
