@@ -45,6 +45,13 @@ class ResponseTransformer implements ResponseTransformerInterface
                 $body = (string) $stream;
             }
 
+            // Keep text and JSON responses plain for the common REST API path,
+            // and only encode responses that look binary.
+            $isBase64Encoded = $this->shouldBase64Encode($response);
+            if ($isBase64Encoded) {
+                $body = base64_encode($body);
+            }
+
             return [
                 'statusCode' => $statusCode,
                 'statusDescription' => $response->getReasonPhrase(),
@@ -52,7 +59,7 @@ class ResponseTransformer implements ResponseTransformerInterface
                 'cookies' => $cookies,
                 'multiValueHeaders' => $multiValueHeaders,
                 'body' => $body,
-                'isBase64Encoded' => $this->shouldBase64Encode($response),
+                'isBase64Encoded' => $isBase64Encoded,
             ];
         } catch (\Throwable $e) {
             throw TransformationException::forResponse(
@@ -77,6 +84,8 @@ class ResponseTransformer implements ResponseTransformerInterface
     {
         $contentType = $response->getHeaderLine('Content-Type');
 
+        // This is an intentionally lightweight heuristic for typical Lambda
+        // REST API responses rather than a full MIME classification.
         // Text-based content types don't need Base64 encoding
         $textTypes = [
             'text/',
