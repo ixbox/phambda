@@ -325,15 +325,27 @@ Phambda は、実行環境ごとに PHP のプロセスを 1 つだけ起動し�
 
 ```php
 $handler = new class implements RequestHandlerInterface {
-    private ?Database $db = null;
+    private ?bool $initialized = null;
+    private Database $db;
 
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        $this->db ??= new Database(); // 失敗した場合は、次の呼び出しでやり直す
+        // 最初の呼び出しで 1 回だけ実行する。失敗した場合は、次の呼び出しでやり直す
+        $this->initialized ??= $this->initialize();
         // ハンドラーロジック
+    }
+
+    private function initialize(): bool
+    {
+        $this->db = new Database();
+        // ほかの初期化処理もここにまとめる
+
+        return true;
     }
 };
 ```
+
+`initialize()` の途中で失敗すると、次の呼び出しで最初からやり直します。何度実行しても問題がないように書いてください。
 
 static プロパティやシングルトンに入れたリクエストごとのデータも、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
 
