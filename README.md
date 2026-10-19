@@ -282,6 +282,7 @@ Phambda は以下の設定オプションをサポートしています：
 | `AWS_LAMBDA_LOG_GROUP_NAME`       | CloudWatch ログのグループ名            | -                |
 | `AWS_LAMBDA_LOG_STREAM_NAME`      | CloudWatch ログのストリーム名          | -                |
 | `LOG_TIMEZONE`                    | ログのタイムゾーン                     | `UTC`            |
+| `PHAMBDA_DEBUG`                   | `1` のとき、HTTP のハンドラーで例外が出た際の 500 応答に、例外メッセージとスタックトレースを含める。指定しなければ `{"message":"Internal Server Error"}` だけを返し、詳細はログに出す | -                |
 
 ### ランタイム設定
 
@@ -356,6 +357,12 @@ API Gateway を前に置く場合は、統合のタイムアウト（HTTP API �
 
 呼び出しの期限は `$context->deadlineMs`（UNIX 時間のミリ秒）で取れます。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で `Context` を取り出せます。
 長い処理は、複数の関数に分けるか、Step Functions などを使うことを検討してください。
+
+### ALB で同じ名前のヘッダーを複数返す
+
+ALB のターゲットグループで複数値ヘッダーを有効にしていない場合、ALB は同じ名前のヘッダーを 1 つしか受け付けません。
+このとき Phambda は最後の値だけを返し、落とした値があることを warning のログに記録します。
+複数の `Set-Cookie` を返したい場合などは、ターゲットグループの属性で複数値ヘッダー（`lambda.multi_value_headers.enabled`）を有効にしてください。
 
 ## デバッグとトラブルシューティング
 

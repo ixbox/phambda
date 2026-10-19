@@ -15,6 +15,11 @@ use Psr\Log\NullLogger;
 
 class Worker
 {
+    private readonly bool $debug;
+
+    /**
+     * @param bool|null $debug Return exception details in error responses. Defaults to the PHAMBDA_DEBUG environment variable.
+     */
     public function __construct(
         private readonly EventWorker $worker,
         private readonly StreamFactoryInterface $streamFactory,
@@ -22,8 +27,9 @@ class Worker
         private readonly RequestTransformer $requestTransformer,
         private readonly ResponseTransformer $responseTransformer,
         public readonly LoggerInterface $logger = new NullLogger(),
+        ?bool $debug = null,
     ) {
-        //
+        $this->debug = $debug ?? filter_var(getenv('PHAMBDA_DEBUG'), FILTER_VALIDATE_BOOLEAN);
     }
 
     public function nextRequest(): Invocation
@@ -87,8 +93,24 @@ class Worker
         }
     }
 
+    /**
+     * Respond with HTTP 500.
+     *
+     * The body only says "Internal Server Error" so that exception messages, stack traces
+     * and file paths are not exposed to clients. Set PHAMBDA_DEBUG=1 to include them.
+     */
     public function respondWithError(Invocation $invocation, \Throwable $error): void
     {
+        if (!$this->debug) {
+            $response = $this->responseFactory->createResponse(500)
+                ->withHeader('Content-Type', 'application/json')
+                ->withBody($this->streamFactory->createStream('{"message":"Internal Server Error"}'));
+
+            $this->respond($invocation, $response);
+
+            return;
+        }
+
         $errorData = [
             'errorMessage' => $error->getMessage(),
             'errorType' => $error::class,

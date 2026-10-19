@@ -6,6 +6,8 @@ namespace Phambda\Http;
 
 use Phambda\Exception\TransformationException;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class ResponseTransformer
 {
@@ -23,6 +25,11 @@ class ResponseTransformer
         502 => 'Bad Gateway',
         503 => 'Service Unavailable',
     ];
+
+    public function __construct(
+        private readonly LoggerInterface $logger = new NullLogger(),
+    ) {
+    }
 
     /**
      * @param ResponseInterface $response The HTTP response
@@ -105,6 +112,14 @@ class ResponseTransformer
         foreach ($response->getHeaders() as $name => $value) {
             if ($value === []) {
                 continue;
+            }
+            if (count($value) > 1) {
+                // Without multi-value headers, ALB accepts one value per header name.
+                $this->logger->warning('ALB without multi-value headers returns only the last value of a header', [
+                    'header' => $name,
+                    'dropped' => count($value) - 1,
+                    'hint' => 'Enable multi-value headers on the target group to return every value (for example, several Set-Cookie headers)',
+                ]);
             }
             $headers[$name] = $value[array_key_last($value)];
         }

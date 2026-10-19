@@ -4,13 +4,21 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
-## [Unreleased]
+## [0.5.0] - 2026-10-19
 
 ### 破壊的変更
 
 - クエリパラメータを、すべてのイベント形式で `$_GET` と同じ規則（`parse_str()`）で解析します。v0.4.0 では REST API（ペイロード 1.0）と ALB の複数値ヘッダーモードで値が 1 つでも配列（`['page' => ['2']]`）になりましたが、ほかの形式と同じく文字列（`['page' => '2']`）になります。
   - 重複したキーは最後の値になります（REST API の `queryStringParameters` と同じ）。すべての値が必要なときは `getUri()->getQuery()` を参照するか、`tags[]=a&tags[]=b` の配列表記を使ってください。
   - `tags[]` や `filter[status]` などの配列表記を解釈します。
+- `Event` の `isset($event['key'])` を、配列の `isset()` と同じ挙動に戻しました。値が `null` のときは `false` を返します。キーの有無を調べるには、追加した `Event::has()` を使ってください。
+- HTTP のハンドラーで例外が出たときの 500 応答は、`{"message":"Internal Server Error"}` だけを返します。例外メッセージ、スタックトレース、ファイルパスをクライアントに返さないためです。以前と同じ詳細が必要なときは、環境変数 `PHAMBDA_DEBUG=1` を設定してください。
+
+### 追加
+
+- `Event::has()` を追加しました。値が `null` でも、キーがあれば `true` を返します。
+- 環境変数 `PHAMBDA_DEBUG` と、`Phambda\Http\Worker` のコンストラクタ引数 `$debug` を追加しました。
+- `ResponseTransformer` のコンストラクタでロガーを受け取ります。ALB の単一値ヘッダーモードで、同じ名前のヘッダーの値を落としたときに warning を記録します。
 
 ### 変更
 
@@ -26,6 +34,10 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - HTTP API（ペイロード 2.0）と Lambda 関数 URL では、クエリパラメータを `queryStringParameters` ではなく `rawQueryString` から読みます。`queryStringParameters` は重複したキーの値をカンマで連結するため、`q=x%2Cy&q=z` と `q=x&q=y&q=z` を区別できませんでした。`rawQueryString` が無いイベントでは `queryStringParameters` を使います。
 - すべてのイベント形式で、`getUri()->getQuery()` にクエリ文字列が入ります。REST API と ALB では、イベントのパラメータから組み立てます。
 - レスポンスのヘッダーが空のとき、`headers` と `multiValueHeaders` が JSON の配列（`[]`）ではなくオブジェクト（`{}`）になるようにしました。
+- Cookie の値を `$_COOKIE` と同じく URL デコードします。同じ名前の Cookie が複数あるときは、最初の値を使います。
+- HTTP API（ペイロード 2.0）と Lambda 関数 URL で、`cookies` 配列から `Cookie` ヘッダーも組み立てます。
+- `Runtime` と `Http\Runtime` のコンストラクタと `execute()` で、`$logger` に `null` を渡せるようにしました。v0.4.0 では `null` を渡すと TypeError になっていました。
+- HTTP のハンドラーで想定外の例外が出たときのログに、スタックトレースを含めます。
 
 ## [0.4.0] - 2026-10-19
 
@@ -62,5 +74,5 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
-[Unreleased]: https://github.com/ixbox/phambda/compare/v0.4.0...HEAD
+[0.5.0]: https://github.com/ixbox/phambda/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ixbox/phambda/compare/v0.3.0...v0.4.0

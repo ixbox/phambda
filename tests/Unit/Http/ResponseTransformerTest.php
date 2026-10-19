@@ -411,4 +411,30 @@ class ResponseTransformerTest extends TestCase
             $this->assertInstanceOf(\stdClass::class, $json->{$field}, $field);
         }
     }
+
+    public function testAlbSingleValueWarnsWhenHeaderValuesAreDropped(): void
+    {
+        $logger = new class () extends \Psr\Log\AbstractLogger {
+            /** @var list<array{mixed, string, array<mixed>}> */
+            public array $records = [];
+
+            public function log($level, string|\Stringable $message, array $context = []): void
+            {
+                $this->records[] = [$level, (string) $message, $context];
+            }
+        };
+        $transformer = new ResponseTransformer($logger);
+        $response = new \Nyholm\Psr7\Response(200, ['Set-Cookie' => ['a=1', 'b=2'], 'Content-Type' => 'text/plain']);
+
+        $payload = $transformer->transform($response, EventFormat::Alb);
+
+        $this->assertSame('b=2', $payload['headers']['Set-Cookie']);
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0][0]);
+        $this->assertSame(['header' => 'Set-Cookie', 'dropped' => 1], array_intersect_key($logger->records[0][2], ['header' => 0, 'dropped' => 0]));
+
+        // Multi-value mode keeps every value, so nothing is logged
+        $transformer->transform($response, EventFormat::AlbMultiValue);
+        $this->assertCount(1, $logger->records);
+    }
 }

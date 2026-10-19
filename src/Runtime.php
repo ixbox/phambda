@@ -14,14 +14,16 @@ use Psr\Log\NullLogger;
 class Runtime implements RuntimeInterface
 {
     private readonly Worker $worker;
+    private readonly LoggerInterface $logger;
 
     public function __construct(
         private readonly HandlerInterface $handler,
-        private readonly LoggerInterface $logger = new NullLogger(),
+        ?LoggerInterface $logger = null,
         ?Worker $worker = null,
     ) {
+        $this->logger = $logger ?? new NullLogger();
         $this->worker = $worker ?? WorkerFactory::create(
-            logger: $logger,
+            logger: $this->logger,
         );
         $this->logger->info('Runtime initialized');
     }
@@ -95,7 +97,7 @@ class Runtime implements RuntimeInterface
         }
     }
 
-    public static function execute(HandlerInterface $handler, LoggerInterface $logger = new NullLogger()): void
+    public static function execute(HandlerInterface $handler, ?LoggerInterface $logger = null): void
     {
         (new self($handler, $logger))->run();
     }

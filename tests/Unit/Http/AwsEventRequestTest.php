@@ -162,6 +162,28 @@ class AwsEventRequestTest extends TestCase
         ], $request->getCookieParams());
     }
 
+    public function testV2CookiesAreUrlDecodedAndAlsoSentAsCookieHeader(): void
+    {
+        $payload = $this->load('lambda-function-url.json');
+        $payload['cookies'] = ['a=hello%20world', 'b=1', 'a=second'];
+
+        $request = $this->transformer->transform(new Event($payload), $this->context(), EventFormat::V2);
+
+        // Same as $_COOKIE: values are URL-decoded and the first occurrence of a name wins
+        $this->assertSame(['a' => 'hello world', 'b' => '1'], $request->getCookieParams());
+        $this->assertSame('a=hello%20world; b=1; a=second', $request->getHeaderLine('cookie'));
+    }
+
+    public function testV1CookieHeaderValuesAreUrlDecoded(): void
+    {
+        $payload = $this->load('api-gateway-rest-payload-1.0.json');
+        $payload['multiValueHeaders']['Cookie'] = ['name=%E5%B1%B1%E7%94%B0; plus=a+b'];
+
+        $request = $this->transformer->transform(new Event($payload), $this->context(), EventFormat::V1);
+
+        $this->assertSame(['name' => '山田', 'plus' => 'a b'], $request->getCookieParams());
+    }
+
     public function testAlbSample(): void
     {
         $request = $this->transform('alb.json');

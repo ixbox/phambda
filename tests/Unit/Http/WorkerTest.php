@@ -466,7 +466,69 @@ class WorkerTest extends TestCase
         $this->httpWorker->respond($this->httpInvocation($awsInvocationId, EventFormat::V2), $this->response);
     }
 
-    public function testRespondWithErrorUsesInjectedFactories(): void
+    private function worker(?bool $debug): Worker
+    {
+        return new Worker(
+            $this->worker,
+            $this->streamFactory,
+            $this->responseFactory,
+            $this->requestTransformer,
+            $this->responseTransformer,
+            debug: $debug,
+        );
+    }
+
+    public function testRespondWithErrorHidesDetailsByDefault(): void
+    {
+        $invocation = $this->httpInvocation('req-1', EventFormat::V2);
+        $this->response->expects($this->once())
+            ->method('withHeader')
+            ->with('Content-Type', 'application/json')
+            ->willReturnSelf();
+        $this->response->method('withBody')->willReturnSelf();
+        $this->responseFactory->method('createResponse')->with(500)->willReturn($this->response);
+
+        // 例外メッセージやスタックトレースをクライアントに返さない
+        $this->streamFactory->expects($this->once())
+            ->method('createStream')
+            ->with('{"message":"Internal Server Error"}')
+            ->willReturn($this->stream);
+
+        $this->responseTransformer->method('transform')->willReturn(['statusCode' => 500]);
+        $this->worker->expects($this->once())->method('respond')->with('req-1', '{"statusCode":500}');
+
+        $this->worker(debug: false)->respondWithError($invocation, new \RuntimeException('secret detail'));
+    }
+
+    public function testDebugModeDefaultsToPhambdaDebugEnvironmentVariable(): void
+    {
+        $invocation = $this->httpInvocation('req-1', EventFormat::V2);
+        $this->response->method('withHeader')->willReturnSelf();
+        $this->response->method('withBody')->willReturnSelf();
+        $this->responseFactory->method('createResponse')->willReturn($this->response);
+        $this->responseTransformer->method('transform')->willReturn(['statusCode' => 500]);
+
+        $bodies = [];
+        $this->streamFactory->method('createStream')
+            ->willReturnCallback(function (string $body) use (&$bodies) {
+                $bodies[] = $body;
+
+                return $this->stream;
+            });
+
+        putenv('PHAMBDA_DEBUG=1');
+        try {
+            $this->worker(debug: null)->respondWithError($invocation, new \RuntimeException('boom'));
+        } finally {
+            putenv('PHAMBDA_DEBUG');
+        }
+        $this->worker(debug: null)->respondWithError($invocation, new \RuntimeException('boom'));
+
+        $this->assertStringContainsString('"errorMessage": "boom"', $bodies[0]);
+        $this->assertSame('{"message":"Internal Server Error"}', $bodies[1]);
+    }
+
+    public function testRespondWithErrorIncludesDetailsInDebugMode(): void
     {
         $invocation = $this->httpInvocation('req-1', EventFormat::V2);
         $this->response->method('getStatusCode')->willReturn(500);
@@ -504,7 +566,7 @@ class WorkerTest extends TestCase
             ->method('respond')
             ->with('req-1', '{"statusCode":500}');
 
-        $this->httpWorker->respondWithError($invocation, new \RuntimeException('boom'));
+        $this->worker(debug: true)->respondWithError($invocation, new \RuntimeException('boom'));
     }
 
     public function testRespondUsesTheFormatCarriedByEachInvocation(): void

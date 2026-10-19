@@ -149,7 +149,17 @@ class RequestTransformer
             EventFormat::V2, EventFormat::Alb => $event['headers'] ?? [],
         };
 
-        return $this->normalizeHeaders($headers);
+        $headers = $this->normalizeHeaders($headers);
+
+        // Payload format 2.0 moves the Cookie header into the "cookies" array.
+        if ($format === EventFormat::V2 && $this->headerValues($headers, 'cookie') === []) {
+            $cookies = array_filter((array) ($event['cookies'] ?? []), is_string(...));
+            if ($cookies !== []) {
+                $headers['cookie'] = implode('; ', $cookies);
+            }
+        }
+
+        return $headers;
     }
 
     /**
@@ -275,6 +285,9 @@ class RequestTransformer
     }
 
     /**
+     * Parse cookies the way PHP fills $_COOKIE: values are URL-decoded and the
+     * first occurrence of a name wins.
+     *
      * @param mixed $cookies
      * @return array<string, string>
      */
@@ -299,11 +312,11 @@ class RequestTransformer
 
                 $pieces = explode('=', $part, 2);
                 $name = trim($pieces[0]);
-                if ($name === '') {
+                if ($name === '' || array_key_exists($name, $cookieParams)) {
                     continue;
                 }
 
-                $cookieParams[$name] = $pieces[1] ?? '';
+                $cookieParams[$name] = urldecode(trim($pieces[1] ?? ''));
             }
         }
 

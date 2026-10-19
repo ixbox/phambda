@@ -25,13 +25,24 @@ readonly class Event implements ArrayAccess, JsonSerializable
         return new self($event);
     }
 
+    /**
+     * Whether the event has the key, even when its value is null.
+     */
+    public function has(string|int $key): bool
+    {
+        return array_key_exists($key, $this->event);
+    }
+
+    /**
+     * Same semantics as isset() on an array: false when the value is null.
+     */
     public function offsetExists(mixed $offset): bool
     {
         if (!is_string($offset) && !is_int($offset)) {
             return false;
         }
 
-        return array_key_exists($offset, $this->event);
+        return isset($this->event[$offset]);
     }
 
     public function offsetGet(mixed $offset): mixed

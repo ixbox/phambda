@@ -55,7 +55,7 @@ class HttpWorkerFactory
 
         // Create transformers if not provided
         $requestTransformer ??= new RequestTransformer($serverRequestFactory, $streamFactory);
-        $responseTransformer ??= new ResponseTransformer();
+        $responseTransformer ??= new ResponseTransformer($logger);
 
         $logger->info('Creating HttpWorker');
         return new Worker(

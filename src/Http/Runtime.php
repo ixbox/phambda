@@ -16,13 +16,15 @@ use Psr\Log\NullLogger;
 class Runtime implements RuntimeInterface
 {
     private readonly Worker $worker;
+    private readonly LoggerInterface $logger;
 
     public function __construct(
         private readonly RequestHandlerInterface $handler,
-        private readonly LoggerInterface $logger = new NullLogger(),
+        ?LoggerInterface $logger = null,
         ?Worker $worker = null,
     ) {
-        $this->worker = $worker ?? HttpWorkerFactory::create(logger: $logger);
+        $this->logger = $logger ?? new NullLogger();
+        $this->worker = $worker ?? HttpWorkerFactory::create(logger: $this->logger);
         $this->logger->info('HTTP runtime initialized');
     }
 
@@ -75,6 +77,7 @@ class Runtime implements RuntimeInterface
                     'request_id' => $invocation->context->awsRequestId,
                     'file' => $error->getFile(),
                     'line' => $error->getLine(),
+                    'trace' => explode("\n", $error->getTraceAsString()),
                 ]);
 
                 $runtimeError = RuntimeException::forInvocation(
@@ -89,7 +92,7 @@ class Runtime implements RuntimeInterface
         }
     }
 
-    public static function execute(RequestHandlerInterface $handler, LoggerInterface $logger = new NullLogger()): void
+    public static function execute(RequestHandlerInterface $handler, ?LoggerInterface $logger = null): void
     {
         (new self($handler, $logger))->run();
     }

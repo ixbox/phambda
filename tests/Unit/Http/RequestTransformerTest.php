@@ -76,9 +76,13 @@ class RequestTransformerTest extends TestCase
                 return $this->request;
             });
 
+        // v2 の cookies 配列から Cookie ヘッダーも組み立てる
+        $headers = [];
         $this->request->method('withHeader')
-            ->with('content-type', 'application/json')
-            ->willReturnSelf();
+            ->willReturnCallback(function ($name, $value) use (&$headers) {
+                $headers[$name] = $value;
+                return $this->request;
+            });
 
         $this->request->method('withCookieParams')
             ->with(['session' => 'abc123'])
@@ -98,6 +102,10 @@ class RequestTransformerTest extends TestCase
 
         $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
+        $this->assertSame([
+            'content-type' => 'application/json',
+            'cookie' => 'session=abc123',
+        ], $headers);
     }
 
     public function testTransformWithHttpMethod(): void
@@ -274,6 +282,7 @@ class RequestTransformerTest extends TestCase
                     0 => $this->assertEquals(['content-type', 'application/json'], [$name, $value]),
                     1 => $this->assertEquals(['authorization', 'Bearer token123'], [$name, $value]),
                     2 => $this->assertEquals(['x-api-key', 'abc123'], [$name, $value]),
+                    3 => $this->assertEquals(['cookie', 'session=def456'], [$name, $value]),
                     default => $this->fail('Unexpected call to withHeader')
                 };
                 return $this->request;
@@ -297,7 +306,7 @@ class RequestTransformerTest extends TestCase
 
         $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
-        $this->assertEquals(3, $headerCalls, '3つのヘッダーが処理されるべきです');
+        $this->assertEquals(4, $headerCalls, '3つのヘッダーと、cookies から組み立てた Cookie ヘッダーが処理されるべきです');
     }
 
     public function testTransformWithNullValues(): void
