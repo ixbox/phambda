@@ -8,12 +8,11 @@ use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\HttpWorkerFactory;
-use Phambda\RuntimeInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-class Runtime implements RuntimeInterface
+class Runtime
 {
     private readonly Worker $worker;
     private readonly LoggerInterface $logger;

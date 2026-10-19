@@ -11,7 +11,7 @@ use Phambda\Factory\WorkerFactory;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-class Runtime implements RuntimeInterface
+class Runtime
 {
     private readonly Worker $worker;
     private readonly LoggerInterface $logger;

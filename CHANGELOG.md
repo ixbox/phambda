@@ -4,6 +4,12 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [0.6.0] - 2026-10-19
+
+### 破壊的変更
+
+- `Phambda\RuntimeInterface` を削除しました。`Phambda\Runtime` と `Phambda\Http\Runtime` は、このインターフェースを実装しなくなります。型宣言に使っている場合は、具象クラスに置き換えてください。
+
 ## [0.5.0] - 2026-10-19
 
 ### 破壊的変更
@@ -79,5 +85,6 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[0.6.0]: https://github.com/ixbox/phambda/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ixbox/phambda/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ixbox/phambda/compare/v0.3.0...v0.4.0
