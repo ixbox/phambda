@@ -12,6 +12,15 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
   - 重複したキーは最後の値になります（REST API の `queryStringParameters` と同じ）。すべての値が必要なときは `getUri()->getQuery()` を参照するか、`tags[]=a&tags[]=b` の配列表記を使ってください。
   - `tags[]` や `filter[status]` などの配列表記を解釈します。
 
+### 変更
+
+- Composer の配布物（dist）から、テストと開発用の設定ファイルを除外しました。
+
+### 削除
+
+- SAM のサンプル（`main.php`、`bootstrap`、`Makefile`、`template.yaml`、`samconfig.toml`）と、旧 Docker 方式の `Dockerfile` を削除しました。デプロイに必要な構成は README の「AWS Lambda へのデプロイ」を参照してください。
+- サンプル用の `Phambda\Example\Http\ExampleHandler` を削除しました。このクラスは開発用依存の `nyholm/psr7` を使っており、利用者の環境では読み込めませんでした。
+
 ### 修正
 
 - HTTP API（ペイロード 2.0）と Lambda 関数 URL では、クエリパラメータを `queryStringParameters` ではなく `rawQueryString` から読みます。`queryStringParameters` は重複したキーの値をカンマで連結するため、`q=x%2Cy&q=z` と `q=x&q=y&q=z` を区別できませんでした。`rawQueryString` が無いイベントでは `queryStringParameters` を使います。

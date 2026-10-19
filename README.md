@@ -44,160 +44,43 @@ composer require ixbox/phambda
 
 ### 必要な環境
 
-- PHP 8.1 以上
+- PHP 8.2 以上
 - Composer
 - AWS Lambda の実行権限を持つ IAM ロール
   - 基本的な Lambda 実行権限
   - CloudWatch Logs へのアクセス権限
 
-### AWS Lambda 環境のセットアップ
+### AWS Lambda へのデプロイ
 
-Phambda は [static-php-cli](https://static-php.dev/) を活用することで、**コンテナ化せずに** AWS Lambda にデプロイできます。static-php-cli は PHP を静的にリンクしたシングルバイナリを提供しており、AWS Lambda のカスタムランタイム（`provided.al2023`）で直接実行可能です。
+Phambda は Lambda のカスタムランタイム（`provided.al2023`）で動きます。[static-php-cli](https://static-php.dev/) の静的ビルドを使えば、コンテナイメージを作らずに zip でデプロイできます。
 
-#### static-php-cli を使用したデプロイ（推奨）
+関数に必要なものは次の 3 つです。
 
-この方法では Docker イメージのビルドが不要で、デプロイパッケージが軽量になり、コールドスタートが高速化されます。
+- **PHP バイナリ**: static-php-cli の静的ビルド（例: `https://dl.static-php.dev/static-php-cli/common/php-8.4.15-cli-linux-aarch64.tar.gz`）。関数のアーキテクチャ（arm64 なら `aarch64`、x86_64 なら `x86_64`）に合わせます。Layer に置くと、関数のコードと分けて更新できます。
+- **アプリケーション**: エントリーポイントの PHP ファイルと `vendor/`。`composer install --no-dev --optimize-autoloader` で作ります。Phambda は PSR-7 / PSR-17 / PSR-18 の実装を同梱しないので、使う実装（例: `nyholm/psr7` と `php-http/curl-client`）をアプリケーションの `require` に追加してください。使う実装に必要な拡張（`php-http/curl-client` なら `curl`）がバイナリに含まれていることも確認してください。
+- **`bootstrap`**: Lambda が起動する実行可能ファイルです（`chmod +x` が必要）。
 
-**Lambda Layer を活用した構成**により、PHP バイナリ（約 30MB）をアプリケーションコードから分離し、zip の 50MB 制限内に収めやすくなります。
+PHP バイナリを Layer に置いた場合の構成は次のとおりです。Layer は `/opt`、関数のコードは `/var/task` に展開されます。
 
 ```
-┌─────────────────────────────┐
-│  Lambda 関数（< 50MB）       │  ← アプリコード + vendor のみ
-├─────────────────────────────┤
-│  PHP Layer（~30MB）          │  ← static-php-cli バイナリ
-└─────────────────────────────┘
+/opt              ← Layer
+└── bin/php
+/var/task         ← 関数
+├── bootstrap
+├── main.php
+└── vendor/
 ```
 
-1. **SAM テンプレートの設定**
+```sh
+#!/bin/sh
+exec /opt/bin/php /var/task/main.php
+```
 
-   ```yaml
-   AWSTemplateFormatVersion: '2010-09-09'
-   Transform: AWS::Serverless-2016-10-31
+関数の設定:
 
-   Resources:
-     # PHP Runtime Layer (static-php-cli)
-     PhpLayer:
-       Type: AWS::Serverless::LayerVersion
-       Properties:
-         LayerName: php-runtime
-         Description: PHP 8.4 runtime built with static-php-cli
-         ContentUri: .
-         CompatibleRuntimes:
-           - provided.al2023
-         CompatibleArchitectures:
-           - arm64  # または x86_64
-       Metadata:
-         BuildMethod: makefile
-         BuildArchitecture: arm64
-
-     App:
-       Type: AWS::Serverless::Function
-       Properties:
-         Runtime: provided.al2023
-         Handler: bootstrap
-         Architectures:
-           - arm64
-         Layers:
-           - !Ref PhpLayer
-         Events:
-           HelloWorld:
-             Type: HttpApi
-             Properties:
-               Path: /hello
-               Method: get
-       Metadata:
-         BuildMethod: makefile
-   ```
-
-2. **Makefile の作成**
-
-   ```makefile
-   PHP_VERSION = 8.4.15
-
-   # Detect architecture from build container (template.yaml の Architectures に連動)
-   ARCH = $(shell uname -m)
-   PHP_ARCHIVE = php-$(PHP_VERSION)-cli-linux-$(ARCH).tar.gz
-   PHP_URL = https://dl.static-php.dev/static-php-cli/common/$(PHP_ARCHIVE)
-
-   # Download PHP binary matching the target architecture
-   prepare:
-   	@echo "Detected architecture: $(ARCH)"
-   	[ -e $(PHP_ARCHIVE) ] || curl -fsSL -o $(PHP_ARCHIVE) $(PHP_URL)
-   	tar -xzf $(PHP_ARCHIVE)
-   	chmod +x php
-   	[ -e composer.phar ] || curl -fsSL -O https://getcomposer.org/download/latest-stable/composer.phar
-
-   # Build PHP Layer (Layer is mounted at /opt, so php will be at /opt/bin/php)
-   build-PhpLayer: prepare
-   	mkdir -p $(ARTIFACTS_DIR)/bin
-   	cp php $(ARTIFACTS_DIR)/bin/php
-
-   # Build Application Function (code + vendor only, no PHP binary)
-   build-App: prepare
-   	cp -r src $(ARTIFACTS_DIR)/src
-   	cp composer.json composer.lock $(ARTIFACTS_DIR)
-   	cp bootstrap $(ARTIFACTS_DIR)
-   	cp main.php $(ARTIFACTS_DIR)
-   	./php composer.phar install --no-interaction --no-progress --prefer-dist --optimize-autoloader -d $(ARTIFACTS_DIR)
-   	# Remove unnecessary files to reduce package size
-   	find $(ARTIFACTS_DIR)/vendor -type f -name "*.md" -delete
-   	find $(ARTIFACTS_DIR)/vendor -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
-   ```
-
-   > **Note**: 本番環境では `--no-dev` を使用し、必要な PSR 実装（HTTP クライアント、PSR-7 実装など）を `composer.json` の `require` セクションに追加してください。
-
-3. **bootstrap ファイルの作成**
-
-   ```bash
-   #!/bin/bash
-   # PHP binary is provided by the Layer at /opt/bin/php
-   /opt/bin/php /var/task/main.php
-   ```
-
-4. **デプロイ**
-
-   ```bash
-   # --use-container でコンテナ内ビルド（Linux 環境でビルドするため必須）
-   sam build --use-container
-   sam deploy --guided
-   ```
-
-#### static-php-cli + Layer のメリット
-
-- **コンテナ不要**: Docker イメージのビルド・プッシュが不要
-- **50MB 制限に対応**: PHP バイナリを Layer に分離し、関数 zip を軽量化
-- **デプロイ高速化**: PHP Layer は初回のみ、以降はアプリコードだけ更新
-- **高速なコールドスタート**: コンテナ起動のオーバーヘッドがない
-- **シンプルな CI/CD**: Docker 環境が不要なため、ビルドパイプラインが簡素化
-- **Layer 共有**: 複数の Lambda 関数で同じ PHP Layer を再利用可能
-
-#### コンテナを使用したデプロイ（代替方法）
-
-Docker コンテナを使用したい場合は、以下の方法も利用可能です：
-
-1. Lambda 関数の作成
-   - ランタイム: カスタムランタイム
-   - アーキテクチャ: x86_64 または arm64
-   - メモリ: 推奨 256MB 以上
-   - タイムアウト: アプリケーションの要件に応じて設定（デフォルト 29 秒）
-
-2. デプロイメントパッケージの作成
-
-   ```bash
-   # 本番環境用の依存関係のみをインストール
-   composer install --no-dev --optimize-autoloader
-
-   # デプロイメントパッケージの作成
-   zip -r function.zip . -x "*.git*" "tests/*" "*.dist" "*.md"
-   ```
-
-3. Lambda 関数の設定
-   - ハンドラー: `index.php`（エントリーポイントとなる PHP ファイル）
-   - 環境変数（必要に応じて設定）:
-     ```
-     AWS_LAMBDA_RUNTIME_API: Lambda ランタイム API のエンドポイント
-     LOG_TIMEZONE: ログのタイムゾーン（デフォルト: UTC）
-     ```
+- ランタイム: `provided.al2023`
+- ハンドラー: カスタムランタイムでは使われないので、任意の値（例: `bootstrap`）
+- 環境変数: `AWS_LAMBDA_RUNTIME_API` などは Lambda が設定します。必要に応じて `LOG_TIMEZONE`（ログのタイムゾーン、デフォルト: UTC）を設定してください
 
 ## 使用方法
 

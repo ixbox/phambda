@@ -1,7 +1,0 @@
-/.aws-sam
-/test
-/vendor
-.dockerignore
-Dockerfile
-samconfig.toml
-template.yaml
