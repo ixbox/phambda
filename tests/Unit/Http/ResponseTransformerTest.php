@@ -35,7 +35,7 @@ class ResponseTransformerTest extends TestCase
                 'X-Request-Id' => ['abc123'],
             ]);
 
-        $this->response->method('getHeader')
+        $this->response->expects($this->atLeastOnce())->method('getHeader')
             ->with('set-cookie')
             ->willReturn([]);
 
@@ -88,7 +88,7 @@ class ResponseTransformerTest extends TestCase
                 'Set-Cookie' => $cookies,
             ]);
 
-        $this->response->method('getHeader')
+        $this->response->expects($this->atLeastOnce())->method('getHeader')
             ->with('set-cookie')
             ->willReturn($cookies);
 
@@ -136,7 +136,7 @@ class ResponseTransformerTest extends TestCase
                 'Vary' => ['Accept', 'Accept-Encoding'],
             ]);
 
-        $this->response->method('getHeader')
+        $this->response->expects($this->atLeastOnce())->method('getHeader')
             ->with('set-cookie')
             ->willReturn([]);
 
@@ -191,7 +191,7 @@ class ResponseTransformerTest extends TestCase
                     'Content-Type' => ['application/json'],
                 ]);
 
-            $this->response->method('getHeader')
+            $this->response->expects($this->atLeastOnce())->method('getHeader')
                 ->with('set-cookie')
                 ->willReturn([]);
 
@@ -224,7 +224,7 @@ class ResponseTransformerTest extends TestCase
                 'Content-Type' => ['application/json'],
             ]);
 
-        $this->response->method('getHeader')
+        $this->response->expects($this->atLeastOnce())->method('getHeader')
             ->with('set-cookie')
             ->willReturn([]);
 
@@ -270,7 +270,7 @@ class ResponseTransformerTest extends TestCase
                 'Content-Disposition' => ['attachment; filename="file.bin"'],
             ]);
 
-        $this->response->method('getHeader')
+        $this->response->expects($this->atLeastOnce())->method('getHeader')
             ->with('set-cookie')
             ->willReturn([]);
 
@@ -286,7 +286,7 @@ class ResponseTransformerTest extends TestCase
             ->willReturn($this->stream);
         $this->response->method('getReasonPhrase')
             ->willReturn('');
-        $this->response->method('getHeaderLine')
+        $this->response->expects($this->atLeastOnce())->method('getHeaderLine')
             ->with('Content-Type')
             ->willReturn('application/octet-stream');
 

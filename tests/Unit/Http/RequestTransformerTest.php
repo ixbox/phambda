@@ -60,7 +60,7 @@ class RequestTransformerTest extends TestCase
             deadlineMs: '1234567890'
         );
 
-        $this->requestFactory->method('createServerRequest')
+        $this->requestFactory->expects($this->atLeastOnce())->method('createServerRequest')
             ->with('POST', '/api/test?param=value', (array)$context)
             ->willReturn($this->request);
 
@@ -84,19 +84,19 @@ class RequestTransformerTest extends TestCase
                 return $this->request;
             });
 
-        $this->request->method('withCookieParams')
+        $this->request->expects($this->atLeastOnce())->method('withCookieParams')
             ->with(['session' => 'abc123'])
             ->willReturnSelf();
 
-        $this->request->method('withQueryParams')
+        $this->request->expects($this->atLeastOnce())->method('withQueryParams')
             ->with(['param' => 'value'])
             ->willReturnSelf();
 
-        $this->streamFactory->method('createStream')
+        $this->streamFactory->expects($this->atLeastOnce())->method('createStream')
             ->with('{"test":"data"}')
             ->willReturn($this->stream);
 
-        $this->request->method('withBody')
+        $this->request->expects($this->atLeastOnce())->method('withBody')
             ->with($this->stream)
             ->willReturnSelf();
 
@@ -132,7 +132,7 @@ class RequestTransformerTest extends TestCase
             deadlineMs: '1234567890'
         );
 
-        $this->requestFactory->method('createServerRequest')
+        $this->requestFactory->expects($this->atLeastOnce())->method('createServerRequest')
             ->with('GET', '/api/resource?filter=active', (array)$context)
             ->willReturn($this->request);
 
@@ -151,11 +151,11 @@ class RequestTransformerTest extends TestCase
         $this->request->method('withHeader')
             ->willReturnSelf();
 
-        $this->request->method('withCookieParams')
+        $this->request->expects($this->atLeastOnce())->method('withCookieParams')
             ->with(['session' => 'xyz789'])
             ->willReturnSelf();
 
-        $this->request->method('withQueryParams')
+        $this->request->expects($this->atLeastOnce())->method('withQueryParams')
             ->with(['filter' => 'active'])
             ->willReturnSelf();
 
@@ -193,7 +193,7 @@ class RequestTransformerTest extends TestCase
             deadlineMs: '1234567890'
         );
 
-        $this->requestFactory->method('createServerRequest')
+        $this->requestFactory->expects($this->atLeastOnce())->method('createServerRequest')
             ->with('DELETE', '/api/resource/123', (array)$context)
             ->willReturn($this->request);
 
@@ -211,11 +211,11 @@ class RequestTransformerTest extends TestCase
 
         $this->request->expects($this->never())->method('withHeader');
 
-        $this->request->method('withCookieParams')
+        $this->request->expects($this->atLeastOnce())->method('withCookieParams')
             ->with([])
             ->willReturnSelf();
 
-        $this->request->method('withQueryParams')
+        $this->request->expects($this->atLeastOnce())->method('withQueryParams')
             ->with([])
             ->willReturnSelf();
 
@@ -257,7 +257,7 @@ class RequestTransformerTest extends TestCase
             deadlineMs: '1234567890'
         );
 
-        $this->requestFactory->method('createServerRequest')
+        $this->requestFactory->expects($this->atLeastOnce())->method('createServerRequest')
             ->with('PUT', '/api/update?id=123', (array)$context)
             ->willReturn($this->request);
 
@@ -288,19 +288,19 @@ class RequestTransformerTest extends TestCase
                 return $this->request;
             });
 
-        $this->request->method('withCookieParams')
+        $this->request->expects($this->atLeastOnce())->method('withCookieParams')
             ->with(['session' => 'def456'])
             ->willReturnSelf();
 
-        $this->request->method('withQueryParams')
+        $this->request->expects($this->atLeastOnce())->method('withQueryParams')
             ->with(['id' => '123'])
             ->willReturnSelf();
 
-        $this->streamFactory->method('createStream')
+        $this->streamFactory->expects($this->atLeastOnce())->method('createStream')
             ->with('{"name":"updated"}')
             ->willReturn($this->stream);
 
-        $this->request->method('withBody')
+        $this->request->expects($this->atLeastOnce())->method('withBody')
             ->with($this->stream)
             ->willReturnSelf();
 
@@ -335,7 +335,7 @@ class RequestTransformerTest extends TestCase
             deadlineMs: '1234567890'
         );
 
-        $this->requestFactory->method('createServerRequest')
+        $this->requestFactory->expects($this->atLeastOnce())->method('createServerRequest')
             ->with('GET', '/api/test', (array)$context)
             ->willReturn($this->request);
 
@@ -353,11 +353,11 @@ class RequestTransformerTest extends TestCase
 
         $this->request->expects($this->never())->method('withHeader');
 
-        $this->request->method('withCookieParams')
+        $this->request->expects($this->atLeastOnce())->method('withCookieParams')
             ->with([])
             ->willReturnSelf();
 
-        $this->request->method('withQueryParams')
+        $this->request->expects($this->atLeastOnce())->method('withQueryParams')
             ->with([])
             ->willReturnSelf();
 

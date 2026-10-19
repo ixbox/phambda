@@ -86,7 +86,7 @@ class WorkerTest extends TestCase
             ->willReturn($invocation);
 
         // RequestTransformerがイベントとコンテキストからリクエストを作成することを確認
-        $this->requestTransformer->method('transform')
+        $this->requestTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($invocation->event, $invocation->context, EventFormat::V2)
             ->willReturn($this->request);
 
@@ -155,10 +155,9 @@ class WorkerTest extends TestCase
             ]);
 
         $this->response->method('getHeader')
-            ->with('set-cookie')
             ->willReturn([]);
 
-        $this->responseTransformer->method('transform')
+        $this->responseTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($this->response, EventFormat::V2)
             ->willReturn([
                 'statusCode' => 200,
@@ -221,10 +220,9 @@ class WorkerTest extends TestCase
             ]);
 
         $this->response->method('getHeader')
-            ->with('set-cookie')
             ->willReturn($cookies);
 
-        $this->responseTransformer->method('transform')
+        $this->responseTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($this->response, EventFormat::V2)
             ->willReturn([
                 'statusCode' => 200,
@@ -282,11 +280,10 @@ class WorkerTest extends TestCase
             ]);
 
         $this->response->method('getHeader')
-            ->with('set-cookie')
             ->willReturn([]);
 
         $this->responseTransformer = $this->createMock(ResponseTransformer::class);
-        $this->responseTransformer->method('transform')
+        $this->responseTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($this->response, EventFormat::V2)
             ->willReturn([
                 'statusCode' => $statusCode,
@@ -349,11 +346,10 @@ class WorkerTest extends TestCase
             ]);
 
         $this->response->method('getHeader')
-            ->with('set-cookie')
             ->willReturn([]);
 
         $this->responseTransformer = $this->createMock(ResponseTransformer::class);
-        $this->responseTransformer->method('transform')
+        $this->responseTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($this->response, EventFormat::V2)
             ->willReturn([
                 'statusCode' => $statusCode,
@@ -416,11 +412,10 @@ class WorkerTest extends TestCase
             ]);
 
         $this->response->method('getHeader')
-            ->with('set-cookie')
             ->willReturn([]);
 
         $this->responseTransformer = $this->createMock(ResponseTransformer::class);
-        $this->responseTransformer->method('transform')
+        $this->responseTransformer->expects($this->atLeastOnce())->method('transform')
             ->with($this->response, EventFormat::V2)
             ->willReturn([
                 'statusCode' => $statusCode,
@@ -486,7 +481,7 @@ class WorkerTest extends TestCase
             ->with('Content-Type', 'application/json')
             ->willReturnSelf();
         $this->response->method('withBody')->willReturnSelf();
-        $this->responseFactory->method('createResponse')->with(500)->willReturn($this->response);
+        $this->responseFactory->expects($this->atLeastOnce())->method('createResponse')->with(500)->willReturn($this->response);
 
         // 例外メッセージやスタックトレースをクライアントに返さない
         $this->streamFactory->expects($this->once())
