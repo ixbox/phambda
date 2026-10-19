@@ -316,33 +316,26 @@ $runtime->run();
 
 ## AWS Lambda 特有の考慮事項
 
-### コールドスタート対策
+### 初期化を 1 回だけにする
 
-Lambda 関数は、一定期間使用されないとコンテナが破棄され、次回実行時に新しいコンテナが起動します（コールドスタート）。これにより初回実行時のレイテンシが増加します。
+Phambda は、実行環境ごとに PHP のプロセスを 1 つだけ起動し、そのプロセスで呼び出しを順番に処理します。
+そのため、ハンドラーのプロパティに入れたものは、次の呼び出しでも使えます。
 
-対策：
-
-- メモリ割り当てを増やす（256MB 以上推奨）
-- 初期化コードをハンドラー関数の外に配置する
-- 定期的なウォームアップ呼び出しを設定する
-- Provisioned Concurrency を使用する
+初期化処理は、最初の呼び出しのときに `handle()` の中で行ってください。`Runtime::execute()` より前（ハンドラーのコンストラクタの引数など）で失敗すると、Phambda はエラーを通知できず、プロセスが終了します。
 
 ```php
-// 初期化コードをハンドラー外に配置
-$db = new Database(); // コールドスタート時のみ実行される
+$handler = new class implements RequestHandlerInterface {
+    private ?Database $db = null;
 
-$handler = new class($db) implements RequestHandlerInterface {
-    private $db;
-
-    public function __construct($db) {
-        $this->db = $db;
-    }
-
-    public function handle(ServerRequestInterface $request): ResponseInterface {
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->db ??= new Database(); // 失敗した場合は、次の呼び出しでやり直す
         // ハンドラーロジック
     }
 };
 ```
+
+static プロパティやシングルトンに入れたリクエストごとのデータも、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
 
 ### メモリ設定の最適化
 
