@@ -25,6 +25,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 
 - HTTP API（ペイロード 2.0）と Lambda 関数 URL では、クエリパラメータを `queryStringParameters` ではなく `rawQueryString` から読みます。`queryStringParameters` は重複したキーの値をカンマで連結するため、`q=x%2Cy&q=z` と `q=x&q=y&q=z` を区別できませんでした。`rawQueryString` が無いイベントでは `queryStringParameters` を使います。
 - すべてのイベント形式で、`getUri()->getQuery()` にクエリ文字列が入ります。REST API と ALB では、イベントのパラメータから組み立てます。
+- レスポンスのヘッダーが空のとき、`headers` と `multiValueHeaders` が JSON の配列（`[]`）ではなくオブジェクト（`{}`）になるようにしました。
 
 ## [0.4.0] - 2026-10-19
 

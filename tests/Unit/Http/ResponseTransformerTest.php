@@ -385,4 +385,30 @@ class ResponseTransformerTest extends TestCase
         $this->assertTrue($result['isBase64Encoded']);
         $this->assertSame(base64_encode($body), $result['body']);
     }
+
+    /**
+     * @return iterable<string, array{EventFormat, list<string>}>
+     */
+    public static function headerMapFields(): iterable
+    {
+        yield 'HTTP API / function URL (2.0)' => [EventFormat::V2, ['headers', 'multiValueHeaders']];
+        yield 'REST API (1.0)' => [EventFormat::V1, ['headers', 'multiValueHeaders']];
+        yield 'ALB' => [EventFormat::Alb, ['headers']];
+        yield 'ALB multi-value headers' => [EventFormat::AlbMultiValue, ['multiValueHeaders']];
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('headerMapFields')]
+    public function testEmptyHeadersAreEncodedAsJsonObject(EventFormat $format, array $fields): void
+    {
+        $payload = $this->transformer->transform(new \Nyholm\Psr7\Response(204), $format);
+        $json = json_decode(json_encode($payload, JSON_THROW_ON_ERROR), flags: JSON_THROW_ON_ERROR);
+
+        foreach ($fields as $field) {
+            // json_encode([]) is "[]"; header maps must be "{}"
+            $this->assertInstanceOf(\stdClass::class, $json->{$field}, $field);
+        }
+    }
 }

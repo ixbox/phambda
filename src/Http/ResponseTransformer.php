@@ -59,9 +59,9 @@ class ResponseTransformer
             return [
                 'statusCode' => $statusCode,
                 'statusDescription' => $response->getReasonPhrase(),
-                'headers' => $headers,
+                'headers' => $this->jsonObject($headers),
                 'cookies' => $cookies,
-                'multiValueHeaders' => $multiValueHeaders,
+                'multiValueHeaders' => $this->jsonObject($multiValueHeaders),
                 'body' => $body,
                 'isBase64Encoded' => $isBase64Encoded,
             ];
@@ -96,7 +96,7 @@ class ResponseTransformer
         ];
 
         if ($format === EventFormat::AlbMultiValue) {
-            $payload['multiValueHeaders'] = $response->getHeaders();
+            $payload['multiValueHeaders'] = $this->jsonObject($response->getHeaders());
 
             return $payload;
         }
@@ -108,9 +108,20 @@ class ResponseTransformer
             }
             $headers[$name] = $value[array_key_last($value)];
         }
-        $payload['headers'] = $headers;
+        $payload['headers'] = $this->jsonObject($headers);
 
         return $payload;
+    }
+
+    /**
+     * Header maps must be JSON objects, but json_encode() turns an empty array into "[]".
+     *
+     * @param array<string, mixed> $map
+     * @return array<string, mixed>|\stdClass
+     */
+    private function jsonObject(array $map): array|\stdClass
+    {
+        return $map === [] ? new \stdClass() : $map;
     }
 
     private function statusDescription(ResponseInterface $response): string
