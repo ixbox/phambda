@@ -12,6 +12,7 @@ use Phambda\Http\ResponseTransformerInterface;
 use Phambda\Invocation;
 use Phambda\WorkerInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -23,6 +24,7 @@ class HttpWorkerTest extends TestCase
     private WorkerInterface $worker;
     private ServerRequestFactoryInterface $requestFactory;
     private StreamFactoryInterface $streamFactory;
+    private ResponseFactoryInterface $responseFactory;
     private ServerRequestInterface $request;
     private ResponseInterface $response;
     private StreamInterface $stream;
@@ -35,6 +37,7 @@ class HttpWorkerTest extends TestCase
         $this->worker = $this->createMock(WorkerInterface::class);
         $this->requestFactory = $this->createMock(ServerRequestFactoryInterface::class);
         $this->streamFactory = $this->createMock(StreamFactoryInterface::class);
+        $this->responseFactory = $this->createMock(ResponseFactoryInterface::class);
         $this->request = $this->createMock(ServerRequestInterface::class);
         $this->response = $this->createMock(ResponseInterface::class);
         $this->stream = $this->createMock(StreamInterface::class);
@@ -45,6 +48,7 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
+            $this->responseFactory,
             $this->requestTransformer,
             $this->responseTransformer,
         );
@@ -258,6 +262,7 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
+            $this->responseFactory,
             $this->requestTransformer,
             $this->responseTransformer,
         );
@@ -326,6 +331,7 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
+            $this->responseFactory,
             $this->requestTransformer,
             $this->responseTransformer,
         );
@@ -394,6 +400,7 @@ class HttpWorkerTest extends TestCase
             $this->worker,
             $this->requestFactory,
             $this->streamFactory,
+            $this->responseFactory,
             $this->requestTransformer,
             $this->responseTransformer,
         );
@@ -419,5 +426,45 @@ class HttpWorkerTest extends TestCase
             ->with($awsInvocationId, $expectedResponsePayload);
 
         $this->httpWorker->respond($awsInvocationId, $this->response);
+    }
+
+    public function testRespondWithErrorUsesInjectedFactories(): void
+    {
+        $this->response->method('getStatusCode')->willReturn(500);
+        $this->response->expects($this->once())
+            ->method('withHeader')
+            ->with('Content-Type', 'application/vnd.aws.lambda.error+json')
+            ->willReturnSelf();
+        $this->response->expects($this->once())
+            ->method('withBody')
+            ->with($this->stream)
+            ->willReturnSelf();
+
+        $this->responseFactory->expects($this->once())
+            ->method('createResponse')
+            ->with(500)
+            ->willReturn($this->response);
+
+        $this->streamFactory->expects($this->once())
+            ->method('createStream')
+            ->with($this->callback(function (string $json): bool {
+                $data = json_decode($json, true);
+
+                return is_array($data)
+                    && ($data['errorMessage'] ?? null) === 'boom'
+                    && ($data['errorType'] ?? null) === \RuntimeException::class;
+            }))
+            ->willReturn($this->stream);
+
+        $this->responseTransformer->expects($this->once())
+            ->method('transform')
+            ->with($this->response)
+            ->willReturn(['statusCode' => 500]);
+
+        $this->worker->expects($this->once())
+            ->method('respond')
+            ->with('req-1', '{"statusCode":500}');
+
+        $this->httpWorker->respondWithError('req-1', new \RuntimeException('boom'));
     }
 }

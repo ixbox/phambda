@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Phambda\Http;
 
+use Phambda\Exception\PhambdaException;
 use Phambda\Exception\TransformationException;
 use Phambda\WorkerInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -19,6 +21,7 @@ class HttpWorker implements HttpWorkerInterface
         private readonly WorkerInterface $worker,
         private readonly ServerRequestFactoryInterface $requestFactory,
         private readonly StreamFactoryInterface $streamFactory,
+        private readonly ResponseFactoryInterface $responseFactory,
         private readonly RequestTransformerInterface $requestTransformer,
         private readonly ResponseTransformerInterface $responseTransformer,
         public readonly LoggerInterface $logger = new NullLogger(),
@@ -74,5 +77,29 @@ class HttpWorker implements HttpWorkerInterface
             ]);
             throw $e;
         }
+    }
+
+    public function respondWithError(string $awsRequestId, \Throwable $error): void
+    {
+        $errorData = [
+            'errorMessage' => $error->getMessage(),
+            'errorType' => $error::class,
+            'stackTrace' => explode("\n", $error->getTraceAsString()),
+        ];
+
+        if ($error instanceof PhambdaException && !empty($error->getContext())) {
+            $errorData['context'] = $error->getContext();
+        }
+
+        $errorJson = json_encode($errorData, JSON_PRETTY_PRINT);
+        if ($errorJson === false) {
+            $errorJson = '{"errorMessage":"Failed to encode error response"}';
+        }
+
+        $response = $this->responseFactory->createResponse(500)
+            ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
+            ->withBody($this->streamFactory->createStream($errorJson));
+
+        $this->respond($awsRequestId, $response);
     }
 }

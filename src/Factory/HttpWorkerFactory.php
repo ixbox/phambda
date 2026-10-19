@@ -13,6 +13,7 @@ use Phambda\WorkerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
+use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
@@ -29,6 +30,7 @@ class HttpWorkerFactory
      * @param StreamFactoryInterface|null $streamFactory
      * @param RequestTransformerInterface|null $requestTransformer
      * @param ResponseTransformerInterface|null $responseTransformer
+     * @param ResponseFactoryInterface|null $responseFactory
      * @return HttpWorkerInterface
      */
     public static function create(
@@ -38,11 +40,13 @@ class HttpWorkerFactory
         ?StreamFactoryInterface $streamFactory = null,
         ?RequestTransformerInterface $requestTransformer = null,
         ?ResponseTransformerInterface $responseTransformer = null,
+        ?ResponseFactoryInterface $responseFactory = null,
     ): HttpWorkerInterface {
         $psr18client = new Psr18Client();
 
         $serverRequestFactory ??= $psr18client;
         $streamFactory ??= $psr18client;
+        $responseFactory ??= $psr18client;
 
         // Create worker
         $worker ??= WorkerFactory::create(
@@ -61,6 +65,7 @@ class HttpWorkerFactory
             $worker,
             $serverRequestFactory,
             $streamFactory,
+            $responseFactory,
             $requestTransformer,
             $responseTransformer,
             $logger
@@ -79,6 +84,7 @@ class HttpWorkerFactory
             $container->get(WorkerInterface::class),
             $container->get(ServerRequestFactoryInterface::class),
             $container->get(StreamFactoryInterface::class),
+            $container->get(ResponseFactoryInterface::class),
             $container->get(RequestTransformerInterface::class),
             $container->get(ResponseTransformerInterface::class),
             $logger,

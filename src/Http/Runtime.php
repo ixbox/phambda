@@ -10,12 +10,10 @@ use Phambda\Exception\RuntimeException;
 use Phambda\Exception\TransformationException;
 use Phambda\Factory\HttpWorkerFactory;
 use Phambda\RuntimeInterface;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
-use Nyholm\Psr7\Factory\Psr17Factory;
 
 class Runtime implements RuntimeInterface
 {
@@ -64,10 +62,7 @@ class Runtime implements RuntimeInterface
                     'context' => $error->getContext(),
                 ]);
 
-                $this->worker->respond(
-                    $awsRequestId,
-                    $this->createErrorResponse($error)
-                );
+                $this->worker->respondWithError($awsRequestId, $error);
             } catch (\Throwable $error) {
                 if ($awsRequestId === null) {
                     throw InitializationException::fromEnvironment(
@@ -92,10 +87,7 @@ class Runtime implements RuntimeInterface
                     $error
                 );
 
-                $this->worker->respond(
-                    $awsRequestId,
-                    $this->createErrorResponse($runtimeError)
-                );
+                $this->worker->respondWithError($awsRequestId, $runtimeError);
             }
         }
     }
@@ -111,33 +103,6 @@ class Runtime implements RuntimeInterface
         }
 
         return $awsRequestId;
-    }
-
-    private function createErrorResponse(\Throwable $error): ResponseInterface
-    {
-        $psr17Factory = new Psr17Factory();
-
-        $errorData = [
-            'errorMessage' => $error->getMessage(),
-            'errorType' => $error::class,
-            'stackTrace' => explode("\n", $error->getTraceAsString()),
-        ];
-
-        if ($error instanceof PhambdaException && !empty($error->getContext())) {
-            $errorData['context'] = $error->getContext();
-        }
-
-        $response = $psr17Factory->createResponse(500)
-            ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json');
-
-        $errorJson = json_encode($errorData, JSON_PRETTY_PRINT);
-        if ($errorJson === false) {
-            $errorJson = '{"errorMessage":"Failed to encode error response"}';
-        }
-
-        $errorBody = $psr17Factory->createStream($errorJson);
-
-        return $response->withBody($errorBody);
     }
 
     public static function execute(RequestHandlerInterface $handler, LoggerInterface $logger = new NullLogger()): void
