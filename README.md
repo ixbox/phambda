@@ -23,16 +23,23 @@ Phambda は、PHP で AWS Lambda を簡単に利用するためのランタイ�
 
 ## ランタイム方式の比較
 
-AWS Lambda で PHP を動かす主な手段と、それぞれの特性を以下に示します。
+AWS Lambda で PHP を動かす主な方法と、Phambda との違いです。
 
-| 手段 | 概要 | Lambda 適性 | 備考 |
-|------|------|------------|------|
-| **static-php-cli（本プロジェクト採用）** | 静的リンクされた PHP CLI バイナリ | 最適 | Runtime API と直接通信。軽量で高速なコールドスタート |
-| FrankenPHP | Go + PHP の統合 Web サーバー | 不向き | HTTP サーバー型の設計で、Lambda の Runtime API ポーリングモデルと合わない |
-| Bref | PHP 向け Lambda ランタイムフレームワーク | 良好 | 成熟したエコシステムだが独自の抽象化レイヤーを持つ |
-| Docker コンテナ | コンテナイメージとしてデプロイ | 可能 | 柔軟だがコールドスタートが遅く、イメージサイズの管理が必要 |
+| 方法 | 仕組み | 扱えるイベント | 向いている用途 |
+|------|--------|----------------|----------------|
+| **Phambda**（本ライブラリ） | カスタムランタイム（`provided.al2023`）上の PHP が Runtime API と直接やり取りする。HTTP のイベントは PSR-7 のリクエストに変換し、PSR-15 のハンドラに渡す | HTTP（API Gateway、関数 URL、ALB）と HTTP 以外（SQS など） | Web サーバーを置かずに、PSR-15 のハンドラやイベント処理を軽い構成で動かしたい |
+| [Bref](https://bref.sh/) | PHP のランタイムを Layer で提供する。PHP-FPM ランタイムを使えば、既存のアプリをそのまま動かせる | HTTP と HTTP 以外 | Laravel や Symfony のアプリを、デプロイ用のツールも含めて揃った環境で運用したい |
+| [Lambda Web Adapter](https://github.com/aws/aws-lambda-web-adapter)（LWA） | Lambda の拡張機能がイベントを HTTP リクエストに変換し、関数の中で動く Web サーバー（nginx + PHP-FPM、FrankenPHP など）に転送する | HTTP（API Gateway、関数 URL、ALB）。HTTP 以外のイベントは、指定したパスへの POST として届く | 既存の Web アプリを、Lambda 向けに書き換えずに動かしたい |
+| [Lambda Web Functions](https://docs.aws.amazon.com/lambda/latest/dg/web-functions.html) | 2026 年 10 月に追加された関数の形態。アプリが listen するポートに、Lambda が HTTP リクエストを直接渡す。1 つの実行環境が複数のリクエストを同時に処理し、HTTPS のエンドポイントも Lambda が用意する | HTTP | 同時リクエストの多い Web アプリや API。ただし公式に対応しているランタイムは、現時点で Node.js だけ |
 
-本プロジェクトでは static-php-cli を採用しています。Lambda のカスタムランタイム（`provided.al2023`）上で PHP CLI バイナリを直接実行するため、余分な抽象化レイヤーやサーバープロセスが不要で、最もシンプルかつ軽量な構成を実現できます。
+FrankenPHP や nginx + PHP-FPM のような Web サーバーは、Runtime API を扱わないので、それだけでは Lambda で動きません。LWA と組み合わせて動かします。
+LWA の README でも、Node.js 以外のランタイムでは、Web Functions が対応するまで LWA を使い続けるよう案内されています。
+
+PHP は Web Functions に公式には対応していません。
+Node.js ランタイムから FrankenPHP に `execve` で置き換えて動かす PoC（[ixbox/lambda-web-function-php](https://github.com/ixbox/lambda-web-function-php)）がありますが、ランタイム内部の非公開 API に依存しているため、ランタイムの更新で動かなくなる可能性があります。
+
+Phambda は Lambda Event Functions（Web Functions の登場で、従来の Lambda 関数はこう呼ばれるようになりました）として動きます。
+HTTP 以外のイベントも同じ仕組みで扱えることと、Web サーバーやアダプターを挟まず、PHP の CLI とアプリのコードだけで動くことが特徴です。
 
 ## インストール方法
 
@@ -122,7 +129,7 @@ require __DIR__ . '/vendor/autoload.php';
 use Nyholm\Psr7\Response;
 use Phambda\Context;
 use Phambda\Http\Runtime;
-use Phambda\Logger\AbstractLogger;
+use Phambda\Logger\JsonLogger;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -171,12 +178,12 @@ class MyHandler implements RequestHandlerInterface
     }
 }
 
-// ロガーの作成
-$logger = new AbstractLogger();
+// ロガーの作成（JSON 形式で標準エラー出力に書き、CloudWatch Logs に送られる。info 以上を出力）
+$logger = new JsonLogger('info');
 
-// ハンドラーの作成とランタイムの実行
+// ハンドラーの作成とランタイムの実行（ランタイム自身のログも同じロガーに出す）
 $handler = new MyHandler($logger);
-$runtime = new Runtime($handler);
+$runtime = new Runtime($handler, $logger);
 $runtime->run();
 ```
 
@@ -278,15 +285,31 @@ Phambda は以下の設定オプションをサポートしています：
 
 ### ランタイム設定
 
-```php
-// ランタイム設定のカスタマイズ
-$config = [
-    'logger' => $customLogger,
-    'errorHandler' => $customErrorHandler,
-    'timeout' => 15, // 秒単位
-];
+`Runtime` のコンストラクタが受け取るのは、ハンドラーとロガー、それにランタイム API とやり取りする Worker です。
+`Runtime::execute($handler, $logger)` は、`new Runtime($handler, $logger)` で作って `run()` するのと同じです。
 
-$runtime = new Runtime($handler, $config);
+PSR-7 / PSR-17 / PSR-18 の実装は、何も指定しなければ [php-http/discovery](https://github.com/php-http/discovery) がインストール済みのものから選びます。
+使う実装を明示したい場合は、Worker を自分で組み立てて渡します。
+
+```php
+use Http\Client\Curl\Client;
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Phambda\Factory\HttpWorkerFactory;
+use Phambda\Factory\WorkerFactory;
+use Phambda\Http\Runtime;
+
+$psr17 = new Psr17Factory();
+$client = new Client($psr17, $psr17);
+
+$worker = HttpWorkerFactory::create(
+    logger: $logger,
+    worker: WorkerFactory::create($logger, $client, $psr17, $psr17),
+    serverRequestFactory: $psr17,
+    streamFactory: $psr17,
+    responseFactory: $psr17,
+);
+
+$runtime = new Runtime($handler, $logger, $worker);
 $runtime->run();
 ```
 
@@ -328,7 +351,11 @@ $handler = new class($db) implements RequestHandlerInterface {
 
 ### タイムアウト設定
 
-Lambda 関数のデフォルトタイムアウトは 29 秒ですが、Phambda はデフォルトで 28 秒に設定しています（安全マージン確保のため）。長時間実行が必要な処理は、複数の関数に分割するか、Step Functions などを使用して実装することを検討してください。
+タイムアウトは Lambda 関数の設定で決まります。デフォルトは 3 秒、最大は 900 秒です。Phambda はタイムアウトを独自に設定しません。
+API Gateway を前に置く場合は、統合のタイムアウト（HTTP API は最大 30 秒、REST API はデフォルト 29 秒）にも注意してください。関数のタイムアウトを長くしても、先に API Gateway がエラーを返します。
+
+呼び出しの期限は `$context->deadlineMs`（UNIX 時間のミリ秒）で取れます。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で `Context` を取り出せます。
+長い処理は、複数の関数に分けるか、Step Functions などを使うことを検討してください。
 
 ## デバッグとトラブルシューティング
 
@@ -346,7 +373,8 @@ Lambda 関数のログは CloudWatch Logs に保存されます。以下の方�
 | --------------------------------- | ---------------------------------- | ---------------------------------------- |
 | `Execution timed out`             | 関数の実行時間が長すぎる           | タイムアウト設定の見直し、処理の最適化   |
 | `Memory size exceeded`            | メモリ使用量が割り当てを超えている | メモリ割り当ての増加、メモリリークの修正 |
-| `Unable to import module 'index'` | エントリーポイントが見つからない   | ファイル名とハンドラー設定の確認         |
+| `Runtime.InvalidEntrypoint`       | `bootstrap` が無い、または実行権限が無い | `bootstrap` が zip の直下にあり、`chmod +x` されているか確認 |
+| `Runtime.ExitError`               | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスとログを確認 |
 | `Internal server error`           | 未処理の例外が発生                 | エラーハンドリングの実装、ログの確認     |
 
 ### パフォーマンスチューニング
