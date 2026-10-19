@@ -4,6 +4,19 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [Unreleased]
+
+### 破壊的変更
+
+- クエリパラメータを、すべてのイベント形式で `$_GET` と同じ規則（`parse_str()`）で解析します。v0.4.0 では REST API（ペイロード 1.0）と ALB の複数値ヘッダーモードで値が 1 つでも配列（`['page' => ['2']]`）になりましたが、ほかの形式と同じく文字列（`['page' => '2']`）になります。
+  - 重複したキーは最後の値になります（REST API の `queryStringParameters` と同じ）。すべての値が必要なときは `getUri()->getQuery()` を参照するか、`tags[]=a&tags[]=b` の配列表記を使ってください。
+  - `tags[]` や `filter[status]` などの配列表記を解釈します。
+
+### 修正
+
+- HTTP API（ペイロード 2.0）と Lambda 関数 URL では、クエリパラメータを `queryStringParameters` ではなく `rawQueryString` から読みます。`queryStringParameters` は重複したキーの値をカンマで連結するため、`q=x%2Cy&q=z` と `q=x&q=y&q=z` を区別できませんでした。`rawQueryString` が無いイベントでは `queryStringParameters` を使います。
+- すべてのイベント形式で、`getUri()->getQuery()` にクエリ文字列が入ります。REST API と ALB では、イベントのパラメータから組み立てます。
+
 ## [0.4.0] - 2026-10-19
 
 ### 破壊的変更
@@ -39,4 +52,5 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[Unreleased]: https://github.com/ixbox/phambda/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/ixbox/phambda/compare/v0.3.0...v0.4.0

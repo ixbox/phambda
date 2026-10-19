@@ -61,7 +61,7 @@ class RequestTransformerTest extends TestCase
         );
 
         $this->requestFactory->method('createServerRequest')
-            ->with('POST', '/api/test', (array)$context)
+            ->with('POST', '/api/test?param=value', (array)$context)
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
@@ -125,7 +125,7 @@ class RequestTransformerTest extends TestCase
         );
 
         $this->requestFactory->method('createServerRequest')
-            ->with('GET', '/api/resource', (array)$context)
+            ->with('GET', '/api/resource?filter=active', (array)$context)
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')
@@ -250,7 +250,7 @@ class RequestTransformerTest extends TestCase
         );
 
         $this->requestFactory->method('createServerRequest')
-            ->with('PUT', '/api/update', (array)$context)
+            ->with('PUT', '/api/update?id=123', (array)$context)
             ->willReturn($this->request);
 
         $this->request->method('withAttribute')

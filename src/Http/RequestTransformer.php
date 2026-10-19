@@ -33,7 +33,10 @@ class RequestTransformer
             $method = $this->extractMethod($event, $format);
             $path = $this->extractPath($event, $format);
 
-            $request = $this->requestFactory->createServerRequest($method, $path, (array) $context);
+            $queryString = $this->extractQueryString($event, $format);
+            $uri = $queryString === '' ? $path : $path . '?' . $queryString;
+
+            $request = $this->requestFactory->createServerRequest($method, $uri, (array) $context);
             $request = $request
                 ->withAttribute('awsRequestId', $context->awsRequestId)
                 ->withAttribute('lambda-context', $context);
@@ -43,7 +46,8 @@ class RequestTransformer
             }
 
             $request = $request->withCookieParams($this->extractCookieParams($event, $format));
-            $request = $request->withQueryParams($this->extractQueryParams($event, $format));
+            parse_str($queryString, $queryParams);
+            $request = $request->withQueryParams($queryParams);
 
             $body = $this->extractBody($event);
             if ($body !== null) {
@@ -149,60 +153,57 @@ class RequestTransformer
     }
 
     /**
-     * @return array<string, string|array<int, string>>
+     * The query string of the request, in URL-encoded form.
+     *
+     * Payload format 2.0 provides it as rawQueryString. queryStringParameters is not
+     * used there because it joins duplicate keys with commas ("a=1&a=2" -> "1,2"),
+     * which is indistinguishable from a literal comma. The other formats only provide
+     * parsed parameters, so the query string is rebuilt from them. Either way it is
+     * parsed with parse_str() afterwards, so every format follows $_GET semantics.
      */
-    private function extractQueryParams(Event $event, EventFormat $format): array
+    private function extractQueryString(Event $event, EventFormat $format): string
     {
-        $query = match ($format) {
+        if ($format === EventFormat::V2) {
+            $raw = $event['rawQueryString'] ?? null;
+            if (is_string($raw)) {
+                // The function URL documentation shows the example value with a leading "?".
+                return ltrim($raw, '?');
+            }
+        }
+
+        $parameters = match ($format) {
             EventFormat::V1 => $this->preferMultiValue($event, 'multiValueQueryStringParameters', 'queryStringParameters'),
             EventFormat::AlbMultiValue => $event['multiValueQueryStringParameters'] ?? [],
             EventFormat::V2, EventFormat::Alb => $event['queryStringParameters'] ?? [],
         };
 
-        if (!is_array($query)) {
-            return [];
+        if (!is_array($parameters)) {
+            return '';
         }
 
-        $normalized = [];
-        foreach ($query as $name => $value) {
-            if (!is_string($name)) {
-                continue;
-            }
-
-            if (is_string($value)) {
-                $normalized[$name] = $value;
-                continue;
-            }
-
-            if (!is_array($value)) {
-                continue;
-            }
-
-            $items = [];
-            foreach ($value as $item) {
-                if (is_string($item)) {
-                    $items[] = $item;
+        $pairs = [];
+        foreach ($parameters as $name => $values) {
+            foreach (is_array($values) ? $values : [$values] as $value) {
+                if (!is_string($value)) {
+                    continue;
                 }
+
+                $pairs[] = $this->encodeQueryComponent((string) $name, $format)
+                    . '=' . $this->encodeQueryComponent($value, $format);
             }
-            $normalized[$name] = $items;
         }
 
-        if (!$format->isAlb()) {
-            return $normalized;
+        return implode('&', $pairs);
+    }
+
+    private function encodeQueryComponent(string $component, EventFormat $format): string
+    {
+        // ALB passes query parameters as they appear in the URL (not decoded).
+        if ($format->isAlb()) {
+            $component = urldecode($component);
         }
 
-        $decoded = [];
-        foreach ($normalized as $name => $value) {
-            $name = urldecode($name);
-            if (is_string($value)) {
-                $decoded[$name] = urldecode($value);
-                continue;
-            }
-
-            $decoded[$name] = array_map(urldecode(...), $value);
-        }
-
-        return $decoded;
+        return rawurlencode($component);
     }
 
     /**

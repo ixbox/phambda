@@ -40,8 +40,11 @@ class AwsEventRequestTest extends TestCase
         $this->assertSame('value1', $request->getHeaderLine('header1'));
         $this->assertSame('value1,value2', $request->getHeaderLine('header2'));
         $this->assertSame(['cookie1' => '', 'cookie2' => ''], $request->getCookieParams());
+        // queryStringParameters joins duplicates with commas, so rawQueryString is the source of truth.
+        // Duplicate keys follow PHP's $_GET semantics (last value wins).
+        $this->assertSame('parameter1=value1&parameter1=value2&parameter2=value', $request->getUri()->getQuery());
         $this->assertSame([
-            'parameter1' => 'value1,value2',
+            'parameter1' => 'value2',
             'parameter2' => 'value',
         ], $request->getQueryParams());
         $this->assertSame('Hello from Lambda', (string) $request->getBody());
@@ -67,6 +70,60 @@ class AwsEventRequestTest extends TestCase
         $this->assertSame('/my/path', $request->getUri()->getPath());
         $this->assertSame('Hello from client!', (string) $request->getBody());
         $this->assertSame(['cookie1' => '', 'cookie2' => ''], $request->getCookieParams());
+        $this->assertSame('parameter1=value1&parameter1=value2&parameter2=value', $request->getUri()->getQuery());
+        $this->assertSame([
+            'parameter1' => 'value2',
+            'parameter2' => 'value',
+        ], $request->getQueryParams());
+    }
+
+    public function testV2QueryIsParsedFromRawQueryString(): void
+    {
+        $payload = $this->load('lambda-function-url.json');
+        // rawQueryString only contains a-z, A-Z, 0-9, ".", "_", "-", "%", "&", "=" and "+" (brackets arrive percent-encoded)
+        $payload['rawQueryString'] = 'tags%5B%5D=a&tags%5B%5D=b&filter%5Bstatus%5D=open&q=x%2Cy&q=z&name=hello+world';
+        // What AWS puts in queryStringParameters for the query above (duplicates joined with commas)
+        $payload['queryStringParameters'] = [
+            'tags[]' => 'a,b',
+            'filter[status]' => 'open',
+            'q' => 'x,y,z',
+            'name' => 'hello world',
+        ];
+
+        $request = $this->transformer->transform(new Event($payload), $this->context(), EventFormat::V2);
+
+        $this->assertSame([
+            'tags' => ['a', 'b'],
+            'filter' => ['status' => 'open'],
+            'q' => 'z',
+            'name' => 'hello world',
+        ], $request->getQueryParams());
+        $this->assertSame($payload['rawQueryString'], $request->getUri()->getQuery());
+    }
+
+    public function testV2RawQueryStringWithLeadingQuestionMark(): void
+    {
+        $payload = $this->load('lambda-function-url.json');
+        $payload['rawQueryString'] = '?parameter1=value1&parameter2=value2';
+
+        $request = $this->transformer->transform(new Event($payload), $this->context(), EventFormat::V2);
+
+        $this->assertSame(['parameter1' => 'value1', 'parameter2' => 'value2'], $request->getQueryParams());
+        $this->assertSame('parameter1=value1&parameter2=value2', $request->getUri()->getQuery());
+    }
+
+    public function testV2FallsBackToQueryStringParametersWithoutRawQueryString(): void
+    {
+        $payload = $this->load('lambda-function-url.json');
+        unset($payload['rawQueryString']);
+
+        $request = $this->transformer->transform(new Event($payload), $this->context(), EventFormat::V2);
+
+        $this->assertSame([
+            'parameter1' => 'value1,value2',
+            'parameter2' => 'value',
+        ], $request->getQueryParams());
+        $this->assertSame('parameter1=value1%2Cvalue2&parameter2=value', $request->getUri()->getQuery());
     }
 
     public function testV1PrefersMultiValueFields(): void
@@ -77,10 +134,15 @@ class AwsEventRequestTest extends TestCase
         $this->assertSame('/my/path', $request->getUri()->getPath());
         $this->assertSame(['value1', 'value2'], $request->getHeader('header2'));
         $this->assertSame([], $request->getCookieParams());
+        // Rebuilt from multiValueQueryStringParameters, then parsed with $_GET semantics (last value wins)
+        $this->assertSame(
+            'parameter1=value1&parameter2=value1&parameter2=value2&parameter3=value1%2Cvalue2',
+            $request->getUri()->getQuery(),
+        );
         $this->assertSame([
-            'parameter1' => ['value1'],
-            'parameter2' => ['value1', 'value2'],
-            'parameter3' => ['value1,value2'],
+            'parameter1' => 'value1',
+            'parameter2' => 'value2',
+            'parameter3' => 'value1,value2',
         ], $request->getQueryParams());
         $this->assertSame('Hello from Lambda!', (string) $request->getBody());
         $this->assertNull($request->getAttribute('pathParameters'));
@@ -116,7 +178,8 @@ class AwsEventRequestTest extends TestCase
     {
         $request = $this->transform('alb-multi-value.json');
 
-        $this->assertSame(['val1', 'val2'], $request->getQueryParams()['myKey']);
+        $this->assertSame('myKey=val1&myKey=val2', $request->getUri()->getQuery());
+        $this->assertSame(['myKey' => 'val2'], $request->getQueryParams());
         $this->assertSame([
             'name1' => 'value1',
             'name2' => 'value2',
@@ -182,7 +245,67 @@ class AwsEventRequestTest extends TestCase
             'multiValueQueryStringParameters' => ['q' => ['hello+world', 'a%2Fb']],
         ]), $this->context(), EventFormat::AlbMultiValue);
 
-        $this->assertSame(['hello world', 'a/b'], $multi->getQueryParams()['q']);
+        $this->assertSame(['q' => 'a/b'], $multi->getQueryParams());
+        $this->assertSame('q=hello%20world&q=a%2Fb', $multi->getUri()->getQuery());
+    }
+
+    /**
+     * The same URL must produce the same query params regardless of the event format.
+     *
+     * @return iterable<string, array{array<string, mixed>}>
+     */
+    public static function sameQueryInEveryFormat(): iterable
+    {
+        // ?page=2&tags[]=a&tags[]=b&q=hello+world
+        yield 'HTTP API / function URL (2.0)' => [[
+            'version' => '2.0',
+            'rawPath' => '/',
+            'rawQueryString' => 'page=2&tags%5B%5D=a&tags%5B%5D=b&q=hello+world',
+            'requestContext' => ['http' => ['method' => 'GET', 'path' => '/']],
+        ]];
+        yield 'REST API (1.0)' => [[
+            'httpMethod' => 'GET',
+            'path' => '/',
+            'queryStringParameters' => ['page' => '2', 'tags[]' => 'b', 'q' => 'hello world'],
+            'multiValueQueryStringParameters' => ['page' => ['2'], 'tags[]' => ['a', 'b'], 'q' => ['hello world']],
+        ]];
+        yield 'ALB multi-value headers' => [[
+            'requestContext' => ['elb' => ['targetGroupArn' => 'arn']],
+            'httpMethod' => 'GET',
+            'path' => '/',
+            'multiValueHeaders' => [],
+            'multiValueQueryStringParameters' => ['page' => ['2'], 'tags%5B%5D' => ['a', 'b'], 'q' => ['hello+world']],
+        ]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('sameQueryInEveryFormat')]
+    public function testQueryParamsAreConsistentAcrossFormats(array $payload): void
+    {
+        $event = new Event($payload);
+        $request = $this->transformer->transform($event, $this->context(), EventFormat::fromEvent($event));
+
+        $this->assertSame([
+            'page' => '2',
+            'tags' => ['a', 'b'],
+            'q' => 'hello world',
+        ], $request->getQueryParams());
+        // The space is "+" in rawQueryString and "%20" when rebuilt; both decode to the same value.
+        $this->assertStringStartsWith('page=2&tags%5B%5D=a&tags%5B%5D=b&q=hello', $request->getUri()->getQuery());
+    }
+
+    public function testAlbSingleValueKeepsOnlyOneValuePerKey(): void
+    {
+        // ALB without multi-value headers delivers only the last value of a duplicated key.
+        $request = $this->transformer->transform(new Event([
+            'requestContext' => ['elb' => ['targetGroupArn' => 'arn']],
+            'httpMethod' => 'GET',
+            'path' => '/',
+            'headers' => [],
+            'queryStringParameters' => ['page' => '2', 'tags%5B%5D' => 'b'],
+        ]), $this->context(), EventFormat::Alb);
+
+        $this->assertSame(['page' => '2', 'tags' => ['b']], $request->getQueryParams());
+        $this->assertSame('page=2&tags%5B%5D=b', $request->getUri()->getQuery());
     }
 
     public function testNullMultiValueHeadersIsSingleValueAlb(): void
