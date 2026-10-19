@@ -6,63 +6,71 @@ namespace Phambda\Http;
 
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\TransformationException;
-use Phambda\WorkerInterface;
+use Phambda\Worker as EventWorker;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestFactoryInterface;
-use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-class HttpWorker implements HttpWorkerInterface
+class Worker
 {
     public function __construct(
-        private readonly WorkerInterface $worker,
-        private readonly ServerRequestFactoryInterface $requestFactory,
+        private readonly EventWorker $worker,
         private readonly StreamFactoryInterface $streamFactory,
         private readonly ResponseFactoryInterface $responseFactory,
-        private readonly RequestTransformerInterface $requestTransformer,
-        private readonly ResponseTransformerInterface $responseTransformer,
+        private readonly RequestTransformer $requestTransformer,
+        private readonly ResponseTransformer $responseTransformer,
         public readonly LoggerInterface $logger = new NullLogger(),
     ) {
         //
     }
 
-    public function nextRequest(): ServerRequestInterface
+    public function nextRequest(): Invocation
     {
-        try {
+        while (true) {
             $this->logger->debug('Requesting next Lambda invocation');
             $invocation = $this->worker->nextInvocation();
 
-            $request = $this->requestTransformer->transform($invocation->event, $invocation->context);
-            $this->logger->info('HTTP request received', [
-                'method' => $request->getMethod(),
-                'path' => $request->getUri()->getPath(),
-                'aws_request_id' => $invocation->context->awsRequestId,
-            ]);
+            try {
+                $format = EventFormat::fromEvent($invocation->event);
+                $request = $this->requestTransformer->transform($invocation->event, $invocation->context, $format);
+                $this->logger->info('HTTP request received', [
+                    'method' => $request->getMethod(),
+                    'path' => $request->getUri()->getPath(),
+                    'aws_request_id' => $invocation->context->awsRequestId,
+                ]);
 
-            return $request;
-        } catch (TransformationException $e) {
-            $this->logger->error('Failed to transform Lambda event to HTTP request', [
-                'error' => $e->getMessage(),
-                'context' => $e->getContext(),
-            ]);
-            throw $e;
+                return new Invocation($request, $format, $invocation->context);
+            } catch (TransformationException $e) {
+                $this->logger->error('Failed to transform Lambda event to HTTP request', [
+                    'error' => $e->getMessage(),
+                    'context' => $e->getContext(),
+                    'aws_request_id' => $invocation->context->awsRequestId,
+                ]);
+                $this->worker->error($invocation->context->awsRequestId, $e);
+            }
         }
     }
 
-    public function respond(string $awsRequestId, ResponseInterface $response): void
+    public function respond(Invocation $invocation, ResponseInterface $response): void
     {
+        $awsRequestId = $invocation->context->awsRequestId;
+
         try {
             $this->logger->debug('Transforming HTTP response', [
                 'status' => $response->getStatusCode(),
                 'aws_request_id' => $awsRequestId,
             ]);
 
-            $responsePayload = $this->responseTransformer->transform($response);
+            $responsePayload = $this->responseTransformer->transform($response, $invocation->format);
+            try {
+                $encoded = json_encode($responsePayload, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                throw TransformationException::forResponse('Failed to encode Lambda response', previous: $e);
+            }
 
-            $this->worker->respond($awsRequestId, json_encode($responsePayload));
+            $this->worker->respond($awsRequestId, $encoded);
 
             $this->logger->info('HTTP response sent', [
                 'status' => $response->getStatusCode(),
@@ -79,7 +87,7 @@ class HttpWorker implements HttpWorkerInterface
         }
     }
 
-    public function respondWithError(string $awsRequestId, \Throwable $error): void
+    public function respondWithError(Invocation $invocation, \Throwable $error): void
     {
         $errorData = [
             'errorMessage' => $error->getMessage(),
@@ -91,8 +99,9 @@ class HttpWorker implements HttpWorkerInterface
             $errorData['context'] = $error->getContext();
         }
 
-        $errorJson = json_encode($errorData, JSON_PRETTY_PRINT);
-        if ($errorJson === false) {
+        try {
+            $errorJson = json_encode($errorData, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+        } catch (\JsonException) {
             $errorJson = '{"errorMessage":"Failed to encode error response"}';
         }
 
@@ -100,6 +109,6 @@ class HttpWorker implements HttpWorkerInterface
             ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
             ->withBody($this->streamFactory->createStream($errorJson));
 
-        $this->respond($awsRequestId, $response);
+        $this->respond($invocation, $response);
     }
 }

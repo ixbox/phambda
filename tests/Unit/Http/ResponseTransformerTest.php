@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http;
 
+use Nyholm\Psr7\Factory\Psr17Factory;
+use Phambda\Http\EventFormat;
 use Phambda\Http\ResponseTransformer;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ResponseInterface;
@@ -49,7 +51,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getReasonPhrase')
             ->willReturn('');
 
-        $result = $this->transformer->transform($this->response);
+        $result = $this->transformer->transform($this->response, EventFormat::V2);
 
         $expected = [
             'statusCode' => 200,
@@ -102,7 +104,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getReasonPhrase')
             ->willReturn('');
 
-        $result = $this->transformer->transform($this->response);
+        $result = $this->transformer->transform($this->response, EventFormat::V2);
 
         $expected = [
             'statusCode' => 200,
@@ -150,7 +152,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getReasonPhrase')
             ->willReturn('');
 
-        $result = $this->transformer->transform($this->response);
+        $result = $this->transformer->transform($this->response, EventFormat::V2);
 
         $expected = [
             'statusCode' => 200,
@@ -205,7 +207,7 @@ class ResponseTransformerTest extends TestCase
             $this->response->method('getReasonPhrase')
                 ->willReturn('');
 
-            $result = $this->transformer->transform($this->response);
+            $result = $this->transformer->transform($this->response, EventFormat::V2);
 
             $this->assertEquals($statusCode, $result['statusCode']);
             $this->assertEquals('{"message":"status ' . $statusCode . '"}', $result['body']);
@@ -238,7 +240,7 @@ class ResponseTransformerTest extends TestCase
         $this->response->method('getReasonPhrase')
             ->willReturn('');
 
-        $result = $this->transformer->transform($this->response);
+        $result = $this->transformer->transform($this->response, EventFormat::V2);
 
         $expected = [
             'statusCode' => 204,
@@ -288,7 +290,7 @@ class ResponseTransformerTest extends TestCase
             ->with('Content-Type')
             ->willReturn('application/octet-stream');
 
-        $result = $this->transformer->transform($this->response);
+        $result = $this->transformer->transform($this->response, EventFormat::V2);
 
         $expected = [
             'statusCode' => 200,
@@ -302,10 +304,85 @@ class ResponseTransformerTest extends TestCase
                 'Content-Type' => ['application/octet-stream'],
                 'Content-Disposition' => ['attachment; filename="file.bin"'],
             ],
-            'body' => $binaryContent,
+            'body' => base64_encode($binaryContent),
             'isBase64Encoded' => true,
         ];
 
         $this->assertEquals($expected, $result);
+    }
+
+    public function testPayloadFormatsShareOneResponseShape(): void
+    {
+        $response = (new Psr17Factory())->createResponse(200)
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Set-Cookie', 'a=1')
+            ->withAddedHeader('Set-Cookie', 'b=2');
+
+        foreach ([EventFormat::V1, EventFormat::V2] as $format) {
+            $result = $this->transformer->transform($response, $format);
+
+            $this->assertSame(['a=1', 'b=2'], $result['cookies']);
+            $this->assertArrayHasKey('headers', $result);
+            $this->assertArrayHasKey('multiValueHeaders', $result);
+            $this->assertArrayNotHasKey('Set-Cookie', $result['headers']);
+            $this->assertSame(['a=1', 'b=2'], $result['multiValueHeaders']['Set-Cookie']);
+        }
+    }
+
+    public function testAlbUsesHeadersOnly(): void
+    {
+        $response = (new Psr17Factory())->createResponse(200)
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Set-Cookie', 'a=1')
+            ->withAddedHeader('Set-Cookie', 'b=2');
+
+        $result = $this->transformer->transform($response, EventFormat::Alb);
+
+        $this->assertSame('200 OK', $result['statusDescription']);
+        $this->assertSame('b=2', $result['headers']['Set-Cookie']);
+        $this->assertArrayNotHasKey('multiValueHeaders', $result);
+        $this->assertArrayNotHasKey('cookies', $result);
+    }
+
+    public function testAlbMultiValueUsesOnlyMultiValueHeaders(): void
+    {
+        $response = (new Psr17Factory())->createResponse(201, 'Created')
+            ->withHeader('Content-Type', 'application/json')
+            ->withHeader('Set-Cookie', 'a=1')
+            ->withAddedHeader('Set-Cookie', 'b=2');
+
+        $result = $this->transformer->transform($response, EventFormat::AlbMultiValue);
+
+        $this->assertSame('201 Created', $result['statusDescription']);
+        $this->assertSame(['a=1', 'b=2'], $result['multiValueHeaders']['Set-Cookie']);
+        $this->assertArrayNotHasKey('headers', $result);
+        $this->assertArrayNotHasKey('cookies', $result);
+    }
+
+    public function testJsonSuffixIsNotBase64Encoded(): void
+    {
+        $factory = new Psr17Factory();
+        $response = $factory->createResponse(500)
+            ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
+            ->withBody($factory->createStream('{"errorMessage":"boom"}'));
+
+        $result = $this->transformer->transform($response, EventFormat::V2);
+
+        $this->assertFalse($result['isBase64Encoded']);
+        $this->assertSame('{"errorMessage":"boom"}', $result['body']);
+    }
+
+    public function testTextBodyThatIsNotUtf8IsBase64Encoded(): void
+    {
+        $factory = new Psr17Factory();
+        $body = "\x82\xA0";
+        $response = $factory->createResponse(200)
+            ->withHeader('Content-Type', 'text/csv; charset=Shift_JIS')
+            ->withBody($factory->createStream($body));
+
+        $result = $this->transformer->transform($response, EventFormat::V2);
+
+        $this->assertTrue($result['isBase64Encoded']);
+        $this->assertSame(base64_encode($body), $result['body']);
     }
 }

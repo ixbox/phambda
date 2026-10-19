@@ -15,7 +15,7 @@ use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
 
-class Worker implements WorkerInterface
+class Worker
 {
     private readonly string $baseUri;
     public readonly LoggerInterface $logger;
@@ -46,16 +46,19 @@ class Worker implements WorkerInterface
                 );
             }
 
+            $awsRequestId = $response->getHeaderLine('Lambda-Runtime-Aws-Request-Id');
+            $this->assertInvocationId($awsRequestId);
+
             $event = Event::fromJsonString($response->getBody()->getContents());
             $context = new Context(
                 functionName: getenv('AWS_LAMBDA_FUNCTION_NAME') ?: '',
                 functionVersion: getenv('AWS_LAMBDA_FUNCTION_VERSION') ?: '',
-                invokedFunctionArn: $response->getHeaderLine('Lambda-Runtime-Invoked-Function-Arn') ?? '',
+                invokedFunctionArn: $response->getHeaderLine('Lambda-Runtime-Invoked-Function-Arn'),
                 memoryLimitInMb: getenv('AWS_LAMBDA_FUNCTION_MEMORY_SIZE') ?: '',
-                awsRequestId: $response->getHeaderLine('Lambda-Runtime-Aws-Request-Id') ?? '',
+                awsRequestId: $awsRequestId,
                 logGroupName: getenv('AWS_LAMBDA_LOG_GROUP_NAME') ?: '',
                 logStreamName: getenv('AWS_LAMBDA_LOG_STREAM_NAME') ?: '',
-                deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms') ?? '',
+                deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms'),
             );
 
             $this->logger->info('Received invocation: Request ID ' . $context->awsRequestId);
@@ -72,6 +75,8 @@ class Worker implements WorkerInterface
 
     public function respond(string $invocationId, string $payload): void
     {
+        $this->assertInvocationId($invocationId);
+
         try {
             $this->logger->debug('Sending invocation response: ' . $invocationId);
             $request = $this->requestFactory
@@ -105,6 +110,8 @@ class Worker implements WorkerInterface
 
     public function error(string $invocationId, Throwable $error): void
     {
+        $this->assertInvocationId($invocationId);
+
         try {
             $this->logger->info('Sending error response for invocation: ' . $invocationId);
             $errorData = [
@@ -119,7 +126,7 @@ class Worker implements WorkerInterface
 
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/error")
-                ->withBody($this->streamFactory->createStream(json_encode($errorData)))
+                ->withBody($this->streamFactory->createStream($this->encodeError($errorData)))
                 ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
                 ->withHeader('Lambda-Runtime-Function-Error-Type', $error::class);
 
@@ -138,6 +145,25 @@ class Worker implements WorkerInterface
         }
     }
 
+    /**
+     * @param array<string, mixed> $errorData
+     */
+    private function encodeError(array $errorData): string
+    {
+        try {
+            return json_encode($errorData, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
+        } catch (JsonException) {
+            return '{"errorMessage":"Failed to encode error response"}';
+        }
+    }
+
+    private function assertInvocationId(string $invocationId): void
+    {
+        if ($invocationId === '') {
+            throw InitializationException::fromEnvironment('Lambda invocation id is missing');
+        }
+    }
+
     private function initError(Throwable $error): void
     {
         try {
@@ -153,7 +179,7 @@ class Worker implements WorkerInterface
 
             $request = $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/init/error")
-                ->withBody($this->streamFactory->createStream(json_encode($errorData)))
+                ->withBody($this->streamFactory->createStream($this->encodeError($errorData)))
                 ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
                 ->withHeader('Lambda-Runtime-Function-Error-Type', 'Unhandled');
 

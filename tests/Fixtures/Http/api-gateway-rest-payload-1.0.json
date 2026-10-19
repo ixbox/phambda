@@ -1,0 +1,39 @@
+{
+  "resource": "/my/path",
+  "path": "/my/path",
+  "httpMethod": "GET",
+  "headers": {
+    "header1": "value1",
+    "header2": "value2",
+    "header3": "value1,value2"
+  },
+  "multiValueHeaders": {
+    "header1": ["value1"],
+    "header2": ["value1", "value2"],
+    "header3": ["value1,value2"]
+  },
+  "queryStringParameters": {
+    "parameter1": "value1",
+    "parameter2": "value2",
+    "parameter3": "value1,value2"
+  },
+  "multiValueQueryStringParameters": {
+    "parameter1": ["value1"],
+    "parameter2": ["value1", "value2"],
+    "parameter3": ["value1,value2"]
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "id",
+    "domainName": "id.execute-api.us-east-1.amazonaws.com",
+    "httpMethod": "GET",
+    "path": "/my/path",
+    "protocol": "HTTP/1.1",
+    "requestId": "id=",
+    "stage": "$default"
+  },
+  "pathParameters": null,
+  "stageVariables": null,
+  "body": "Hello from Lambda!",
+  "isBase64Encoded": false
+}

@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http;
 
+use Phambda\Context;
 use Phambda\Exception\InitializationException;
 use Phambda\Exception\RuntimeException;
-use Phambda\Http\HttpWorkerInterface;
+use Phambda\Http\EventFormat;
+use Phambda\Http\Invocation;
+use Phambda\Http\Worker;
 use Phambda\Http\Runtime;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
@@ -18,23 +21,36 @@ class RuntimeTest extends TestCase
     public function testHandlerExceptionIsSentThroughTheWorker(): void
     {
         $request = $this->createMock(ServerRequestInterface::class);
-        $request->method('getAttribute')->with('awsRequestId')->willReturn('req-1');
+        $invocation = new Invocation(
+            $request,
+            EventFormat::V2,
+            new Context(
+                functionName: 'testFunction',
+                functionVersion: '1',
+                invokedFunctionArn: 'arn:aws:lambda:region:account-id:function:testFunction',
+                memoryLimitInMb: '128',
+                awsRequestId: 'req-1',
+                logGroupName: '/aws/lambda/testFunction',
+                logStreamName: '2025/02/28/[$LATEST]abcdef',
+                deadlineMs: '1234567890',
+            ),
+        );
 
         $handler = $this->createMock(RequestHandlerInterface::class);
         $handler->method('handle')->willThrowException(new \RuntimeException('boom'));
 
         $calls = 0;
-        $worker = $this->createMock(HttpWorkerInterface::class);
-        $worker->method('nextRequest')->willReturnCallback(function () use (&$calls, $request) {
+        $worker = $this->createMock(Worker::class);
+        $worker->method('nextRequest')->willReturnCallback(function () use (&$calls, $invocation) {
             if ($calls++ === 0) {
-                return $request;
+                return $invocation;
             }
 
             throw new InitializationException('stop');
         });
         $worker->expects($this->once())
             ->method('respondWithError')
-            ->with('req-1', $this->callback(function (\Throwable $error): bool {
+            ->with($invocation, $this->callback(function (\Throwable $error): bool {
                 return $error instanceof RuntimeException
                     && $error->getMessage() === 'boom'
                     && $error->getInvocationId() === 'req-1';

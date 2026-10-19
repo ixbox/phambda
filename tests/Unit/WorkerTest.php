@@ -213,6 +213,22 @@ class WorkerTest extends TestCase
         }
     }
 
+    public function testNextInvocationRejectsAnEmptyRequestId(): void
+    {
+        $this->requestFactory->method('createRequest')->willReturn($this->request);
+        $this->response->method('getStatusCode')->willReturn(200);
+        $this->response->method('getHeaderLine')->willReturnMap([
+            ['Lambda-Runtime-Aws-Request-Id', ''],
+        ]);
+        $this->response->expects($this->never())->method('getBody');
+        $this->client->method('sendRequest')->willReturn($this->response);
+
+        $this->expectException(InitializationException::class);
+        $this->expectExceptionMessage('Lambda invocation id is missing');
+
+        $this->worker->nextInvocation();
+    }
+
     public function testNextInvocationErrorStatus(): void
     {
         // リクエストのモック設定
@@ -268,6 +284,8 @@ class WorkerTest extends TestCase
         $this->response->expects($this->once())
             ->method('getStatusCode')
             ->willReturn(200);
+        $this->response->method('getHeaderLine')
+            ->willReturn('testRequestId');
 
         $invalidJson = '{invalid json}';
         $this->stream->expects($this->once())
@@ -557,5 +575,32 @@ class WorkerTest extends TestCase
         $this->expectException(InitializationException::class);
         $method = (new \ReflectionClass($this->worker))->getMethod('initError');
         $method->invoke($this->worker, $error);
+    }
+
+    public function testEmptyInvocationIdIsNotPosted(): void
+    {
+        $this->requestFactory->expects($this->never())->method('createRequest');
+
+        $this->expectException(InitializationException::class);
+        $this->expectExceptionMessage('Lambda invocation id is missing');
+
+        $this->worker->respond('', '{}');
+    }
+
+    public function testErrorEncodesInvalidUtf8(): void
+    {
+        $this->requestFactory->method('createRequest')->willReturn($this->request);
+        $this->streamFactory->expects($this->once())
+            ->method('createStream')
+            ->with($this->callback(function (string $json): bool {
+                $data = json_decode($json, true);
+
+                return is_array($data)
+                    && str_contains((string) ($data['errorMessage'] ?? ''), "\u{FFFD}");
+            }))
+            ->willReturn($this->stream);
+        $this->client->expects($this->once())->method('sendRequest')->with($this->request);
+
+        $this->worker->error('req-1', new \RuntimeException("bad \xB1"));
     }
 }

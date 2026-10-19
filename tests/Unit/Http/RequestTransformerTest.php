@@ -6,6 +6,7 @@ namespace Tests\Unit\Http;
 
 use Phambda\Context;
 use Phambda\Event;
+use Phambda\Http\EventFormat;
 use Phambda\Http\RequestTransformer;
 use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestFactoryInterface;
@@ -43,7 +44,7 @@ class RequestTransformerTest extends TestCase
             'headers' => [
                 'content-type' => 'application/json',
             ],
-            'cookies' => ['session' => 'abc123'],
+            'cookies' => ['session=abc123'],
             'queryStringParameters' => ['param' => 'value'],
             'body' => '{"test":"data"}',
         ]);
@@ -95,7 +96,7 @@ class RequestTransformerTest extends TestCase
             ->with($this->stream)
             ->willReturnSelf();
 
-        $result = $this->transformer->transform($event, $context);
+        $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
     }
 
@@ -106,8 +107,8 @@ class RequestTransformerTest extends TestCase
             'path' => '/api/resource',
             'headers' => [
                 'accept' => 'application/json',
+                'cookie' => 'session=xyz789',
             ],
-            'cookies' => ['session' => 'xyz789'],
             'queryStringParameters' => ['filter' => 'active'],
             'body' => null,
         ]);
@@ -140,7 +141,6 @@ class RequestTransformerTest extends TestCase
             });
 
         $this->request->method('withHeader')
-            ->with('accept', 'application/json')
             ->willReturnSelf();
 
         $this->request->method('withCookieParams')
@@ -155,7 +155,7 @@ class RequestTransformerTest extends TestCase
         $this->streamFactory->expects($this->never())->method('createStream');
         $this->request->expects($this->never())->method('withBody');
 
-        $result = $this->transformer->transform($event, $context);
+        $result = $this->transformer->transform($event, $context, EventFormat::V1);
         $this->assertSame($this->request, $result);
     }
 
@@ -215,7 +215,7 @@ class RequestTransformerTest extends TestCase
         $this->streamFactory->expects($this->never())->method('createStream');
         $this->request->expects($this->never())->method('withBody');
 
-        $result = $this->transformer->transform($event, $context);
+        $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
     }
 
@@ -233,7 +233,7 @@ class RequestTransformerTest extends TestCase
                 'authorization' => 'Bearer token123',
                 'x-api-key' => 'abc123',
             ],
-            'cookies' => ['session' => 'def456'],
+            'cookies' => ['session=def456'],
             'queryStringParameters' => ['id' => '123'],
             'body' => '{"name":"updated"}',
         ]);
@@ -295,7 +295,7 @@ class RequestTransformerTest extends TestCase
             ->with($this->stream)
             ->willReturnSelf();
 
-        $result = $this->transformer->transform($event, $context);
+        $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
         $this->assertEquals(3, $headerCalls, '3つのヘッダーが処理されるべきです');
     }
@@ -355,7 +355,7 @@ class RequestTransformerTest extends TestCase
         $this->streamFactory->expects($this->never())->method('createStream');
         $this->request->expects($this->never())->method('withBody');
 
-        $result = $this->transformer->transform($event, $context);
+        $result = $this->transformer->transform($event, $context, EventFormat::V2);
         $this->assertSame($this->request, $result);
     }
 }

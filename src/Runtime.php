@@ -13,12 +13,12 @@ use Psr\Log\NullLogger;
 
 class Runtime implements RuntimeInterface
 {
-    private readonly WorkerInterface $worker;
+    private readonly Worker $worker;
 
     public function __construct(
         private readonly HandlerInterface $handler,
         private readonly LoggerInterface $logger = new NullLogger(),
-        ?WorkerInterface $worker = null,
+        ?Worker $worker = null,
     ) {
         $this->worker = $worker ?? WorkerFactory::create(
             logger: $logger,

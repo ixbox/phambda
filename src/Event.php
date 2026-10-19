@@ -27,7 +27,11 @@ readonly class Event implements ArrayAccess, JsonSerializable
 
     public function offsetExists(mixed $offset): bool
     {
-        return isset($this->event[$offset]);
+        if (!is_string($offset) && !is_int($offset)) {
+            return false;
+        }
+
+        return array_key_exists($offset, $this->event);
     }
 
     public function offsetGet(mixed $offset): mixed

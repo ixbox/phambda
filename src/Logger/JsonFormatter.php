@@ -38,14 +38,14 @@ class JsonFormatter extends AbstractFormatter
      */
     protected function doFormat(array $data): string
     {
-        $json = json_encode($data, $this->jsonOptions);
-        if ($json === false) {
+        try {
+            return json_encode($data, $this->jsonOptions | JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
             throw new RuntimeException(
-                'Failed to encode log data as JSON: ' . json_last_error_msg(),
-                json_last_error()
+                'Failed to encode log data as JSON: ' . $e->getMessage(),
+                $e->getCode(),
+                $e
             );
         }
-
-        return $json;
     }
 }

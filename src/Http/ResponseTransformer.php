@@ -7,23 +7,44 @@ namespace Phambda\Http;
 use Phambda\Exception\TransformationException;
 use Psr\Http\Message\ResponseInterface;
 
-class ResponseTransformer implements ResponseTransformerInterface
+class ResponseTransformer
 {
+    private const REASON_PHRASES = [
+        200 => 'OK',
+        201 => 'Created',
+        204 => 'No Content',
+        301 => 'Moved Permanently',
+        302 => 'Found',
+        400 => 'Bad Request',
+        401 => 'Unauthorized',
+        403 => 'Forbidden',
+        404 => 'Not Found',
+        500 => 'Internal Server Error',
+        502 => 'Bad Gateway',
+        503 => 'Service Unavailable',
+    ];
+
     /**
-     * {@inheritdoc}
-     *
      * @param ResponseInterface $response The HTTP response
-     * @param array|null $context Optional context data
-     * @return array The transformed Lambda response
+     * @param EventFormat $format The HTTP event format of the invocation
+     * @return array<string, mixed> The transformed Lambda response
      * @throws TransformationException If the response cannot be transformed
      */
-    public function transform(ResponseInterface $response, ?array $context = null): array
+    public function transform(ResponseInterface $response, EventFormat $format): array
     {
-
         try {
             $statusCode = $response->getStatusCode();
-            $cookies = $response->getHeader('set-cookie');
+            $body = $this->readBody($response);
+            $isBase64Encoded = $this->shouldBase64Encode($response, $body);
+            if ($isBase64Encoded) {
+                $body = base64_encode($body);
+            }
 
+            if ($format->isAlb()) {
+                return $this->albResponse($response, $format, $statusCode, $body, $isBase64Encoded);
+            }
+
+            $cookies = $response->getHeader('set-cookie');
             $headers = [];
             $multiValueHeaders = [];
             /** @var string $key */
@@ -33,23 +54,6 @@ class ResponseTransformer implements ResponseTransformerInterface
                     continue;
                 }
                 $headers[$key] = implode(', ', $value);
-            }
-
-            // Get the body content, rewinding the stream if needed
-            $body = '';
-            $stream = $response->getBody();
-            if ($stream->isSeekable()) {
-                $stream->rewind();
-                $body = $stream->getContents();
-            } else {
-                $body = (string) $stream;
-            }
-
-            // Keep text and JSON responses plain for the common REST API path,
-            // and only encode responses that look binary.
-            $isBase64Encoded = $this->shouldBase64Encode($response);
-            if ($isBase64Encoded) {
-                $body = base64_encode($body);
             }
 
             return [
@@ -75,14 +79,79 @@ class ResponseTransformer implements ResponseTransformerInterface
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function albResponse(
+        ResponseInterface $response,
+        EventFormat $format,
+        int $statusCode,
+        string $body,
+        bool $isBase64Encoded,
+    ): array {
+        $payload = [
+            'isBase64Encoded' => $isBase64Encoded,
+            'statusCode' => $statusCode,
+            'statusDescription' => $this->statusDescription($response),
+            'body' => $body,
+        ];
+
+        if ($format === EventFormat::AlbMultiValue) {
+            $payload['multiValueHeaders'] = $response->getHeaders();
+
+            return $payload;
+        }
+
+        $headers = [];
+        foreach ($response->getHeaders() as $name => $value) {
+            if ($value === []) {
+                continue;
+            }
+            $headers[$name] = $value[array_key_last($value)];
+        }
+        $payload['headers'] = $headers;
+
+        return $payload;
+    }
+
+    private function statusDescription(ResponseInterface $response): string
+    {
+        $phrase = $response->getReasonPhrase();
+        if ($phrase === '') {
+            $phrase = self::REASON_PHRASES[$response->getStatusCode()] ?? 'Unknown';
+        }
+
+        return $response->getStatusCode() . ' ' . $phrase;
+    }
+
+    private function readBody(ResponseInterface $response): string
+    {
+        $stream = $response->getBody();
+        if ($stream->isSeekable()) {
+            $stream->rewind();
+
+            return $stream->getContents();
+        }
+
+        return (string) $stream;
+    }
+
+    /**
      * Determine if the response body should be Base64 encoded.
      *
      * @param ResponseInterface $response
      * @return bool
      */
-    private function shouldBase64Encode(ResponseInterface $response): bool
+    private function shouldBase64Encode(ResponseInterface $response, string $body): bool
     {
+        if (preg_match('//u', $body) !== 1) {
+            return true;
+        }
+
         $contentType = $response->getHeaderLine('Content-Type');
+
+        if (str_contains($contentType, '+json')) {
+            return false;
+        }
 
         // This is an intentionally lightweight heuristic for typical Lambda
         // REST API responses rather than a full MIME classification.

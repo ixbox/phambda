@@ -3,13 +3,10 @@
 namespace Phambda\Factory;
 
 use Http\Discovery\Psr18Client;
-use Phambda\Http\HttpWorker;
-use Phambda\Http\HttpWorkerInterface;
 use Phambda\Http\RequestTransformer;
-use Phambda\Http\RequestTransformerInterface;
 use Phambda\Http\ResponseTransformer;
-use Phambda\Http\ResponseTransformerInterface;
-use Phambda\WorkerInterface;
+use Phambda\Http\Worker;
+use Phambda\Worker as EventWorker;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -25,23 +22,23 @@ class HttpWorkerFactory
      * Create a new HttpWorker instance with default dependencies.
      *
      * @param LoggerInterface $logger
-     * @param WorkerInterface|null $worker If provided, a default worker will not be created
+     * @param EventWorker|null $worker If provided, a default worker will not be created
      * @param ServerRequestFactoryInterface|null $serverRequestFactory
      * @param StreamFactoryInterface|null $streamFactory
-     * @param RequestTransformerInterface|null $requestTransformer
-     * @param ResponseTransformerInterface|null $responseTransformer
+     * @param RequestTransformer|null $requestTransformer
+     * @param ResponseTransformer|null $responseTransformer
      * @param ResponseFactoryInterface|null $responseFactory
-     * @return HttpWorkerInterface
+     * @return Worker
      */
     public static function create(
         LoggerInterface $logger = new NullLogger(),
-        ?WorkerInterface $worker = null,
+        ?EventWorker $worker = null,
         ?ServerRequestFactoryInterface $serverRequestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-        ?RequestTransformerInterface $requestTransformer = null,
-        ?ResponseTransformerInterface $responseTransformer = null,
+        ?RequestTransformer $requestTransformer = null,
+        ?ResponseTransformer $responseTransformer = null,
         ?ResponseFactoryInterface $responseFactory = null,
-    ): HttpWorkerInterface {
+    ): Worker {
         $psr18client = new Psr18Client();
 
         $serverRequestFactory ??= $psr18client;
@@ -61,9 +58,8 @@ class HttpWorkerFactory
         $responseTransformer ??= new ResponseTransformer();
 
         $logger->info('Creating HttpWorker');
-        return new HttpWorker(
+        return new Worker(
             $worker,
-            $serverRequestFactory,
             $streamFactory,
             $responseFactory,
             $requestTransformer,
@@ -76,17 +72,16 @@ class HttpWorkerFactory
      * @throws NotFoundExceptionInterface
      * @throws ContainerExceptionInterface
      */
-    public static function createFromContainer(ContainerInterface $container): HttpWorkerInterface
+    public static function createFromContainer(ContainerInterface $container): Worker
     {
         $logger = $container->get(LoggerInterface::class);
 
-        return new HttpWorker(
-            $container->get(WorkerInterface::class),
-            $container->get(ServerRequestFactoryInterface::class),
+        return new Worker(
+            $container->get(EventWorker::class),
             $container->get(StreamFactoryInterface::class),
             $container->get(ResponseFactoryInterface::class),
-            $container->get(RequestTransformerInterface::class),
-            $container->get(ResponseTransformerInterface::class),
+            $container->get(RequestTransformer::class),
+            $container->get(ResponseTransformer::class),
             $logger,
         );
     }

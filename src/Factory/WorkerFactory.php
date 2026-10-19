@@ -5,7 +5,6 @@ namespace Phambda\Factory;
 use Http\Discovery\Psr18Client;
 use Phambda\Worker;
 use Phambda\WorkerConfiguration;
-use Phambda\WorkerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
@@ -22,7 +21,7 @@ class WorkerFactory
         ?ClientInterface $client = null,
         ?RequestFactoryInterface $requestFactory = null,
         ?StreamFactoryInterface $streamFactory = null,
-    ): WorkerInterface {
+    ): Worker {
         $logger->info('Creating Worker');
 
         $configuration = WorkerConfiguration::fromEnvironment($logger);
