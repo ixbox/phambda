@@ -23,6 +23,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 ### 変更
 
 - Composer の配布物（dist）から、テストと開発用の設定ファイルを除外しました。
+- `require` に `psr/http-client-implementation` と `psr/http-factory-implementation` を追加しました。php-http/discovery の Composer プラグインを許可しているプロジェクトでは、PSR-18 のクライアントと PSR-17 のファクトリが無いとき、自動でインストールされます。プラグインを許可していないプロジェクトの挙動は変わりません。
 
 ### 削除
 
