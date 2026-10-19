@@ -31,7 +31,8 @@ class Runtime implements RuntimeInterface
     public function run(): void
     {
         $this->logger->info('Starting Lambda invocation loop');
-        while (true) {
+        // The runtime keeps polling the Runtime API until the process is terminated.
+        while (true) { // @phpstan-ignore while.alwaysTrue
             $invocation = null;
             try {
                 $this->logger->debug('Processing new invocation');

@@ -31,7 +31,7 @@
   },
   "scripts": {
     "analyze": [
-      "vendor/bin/phpstan analyse --level max src"
+      "vendor/bin/phpstan analyse --memory-limit=1G"
     ],
     "test": [
       "vendor/bin/pest"

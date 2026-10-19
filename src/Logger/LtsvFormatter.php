@@ -20,16 +20,23 @@ class LtsvFormatter extends AbstractFormatter
     protected function doFormat(array $data): string
     {
         return implode("\t", array_map(
-            fn ($k, $v) => sprintf(
-                "%s:%s",
-                $k,
-                is_array($v) ? json_encode(
-                    $v,
-                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-                ) : $v
-            ),
+            fn ($k, $v) => sprintf('%s:%s', $k, $this->stringify($v)),
             array_keys($data),
             array_values($data)
         ));
+    }
+
+    private function stringify(mixed $value): string
+    {
+        if ($value === null || is_scalar($value) || $value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        $json = json_encode(
+            $value,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR
+        );
+
+        return $json === false ? '' : $json;
     }
 }

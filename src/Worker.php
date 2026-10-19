@@ -209,7 +209,7 @@ class Worker
                 $trace['line'] ?? 0,
                 $trace['class'] ?? '',
                 $trace['type'] ?? '',
-                $trace['function'] ?? '',
+                $trace['function'],
                 implode(', ', array_map(
                     fn ($arg) => is_scalar($arg) ? (string)$arg : gettype($arg),
                     $trace['args'] ?? []

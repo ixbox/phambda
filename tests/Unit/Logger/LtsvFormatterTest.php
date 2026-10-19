@@ -16,3 +16,14 @@ it('formats data correctly', function (): void {
 
     expect($formatter->format($data))->toBe($expected);
 });
+
+it('formats null, booleans and objects without failing', function (): void {
+    $formatter = new LtsvFormatter();
+
+    expect($formatter->format([
+        'null' => null,
+        'true' => true,
+        'object' => new \ArrayObject(['a' => 1]),
+        'invalid' => ["\xff"],
+    ]))->toBe("null:\ttrue:1\tobject:{\"a\":1}\tinvalid:[\"\u{FFFD}\"]");
+});

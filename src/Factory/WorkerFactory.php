@@ -16,6 +16,8 @@ use Psr\Log\NullLogger;
 
 class WorkerFactory
 {
+    use ResolvesFromContainer;
+
     public static function create(
         LoggerInterface $logger = new NullLogger(),
         ?ClientInterface $client = null,
@@ -37,15 +39,16 @@ class WorkerFactory
     /**
      * @throws NotFoundExceptionInterface
      * @throws ContainerExceptionInterface
+     * @throws \UnexpectedValueException If a container entry has an unexpected type
      */
     public static function createFromContainer(ContainerInterface $container): Worker
     {
-        $logger = $container->get(LoggerInterface::class);
+        $logger = self::resolve($container, LoggerInterface::class);
 
         return new Worker(
-            $container->get(ClientInterface::class),
-            $container->get(RequestFactoryInterface::class),
-            $container->get(StreamFactoryInterface::class),
+            self::resolve($container, ClientInterface::class),
+            self::resolve($container, RequestFactoryInterface::class),
+            self::resolve($container, StreamFactoryInterface::class),
             WorkerConfiguration::fromEnvironment($logger),
         );
     }

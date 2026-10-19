@@ -102,3 +102,15 @@ it('uses correct timezone from configuration', function (): void {
 
     $logger->info('Test message');
 });
+
+it('rejects a non-string log level', function (): void {
+    $formatter = Mockery::mock(LogFormatterInterface::class);
+    $logger = new class ($formatter) extends AbstractLogger {
+        public function __construct($formatter)
+        {
+            parent::__construct($formatter);
+        }
+    };
+
+    $logger->log(123, 'message');
+})->throws(Psr\Log\InvalidArgumentException::class);

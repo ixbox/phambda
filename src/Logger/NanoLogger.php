@@ -32,6 +32,7 @@ class NanoLogger implements LoggerInterface
             'context' => $context,
         ];
 
-        error_log(json_encode($data));
+        $json = json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
+        error_log($json === false ? '{"message":"Failed to encode log record"}' : $json);
     }
 }

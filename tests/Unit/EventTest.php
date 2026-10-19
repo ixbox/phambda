@@ -32,4 +32,19 @@ class EventTest extends TestCase
         $this->assertTrue($event->has('pathParameters'));
         $this->assertFalse($event->has('missing'));
     }
+
+    public function testFromJsonStringRejectsScalarPayload(): void
+    {
+        $this->expectException(\JsonException::class);
+
+        Event::fromJsonString('"hello"');
+    }
+
+    public function testNonArrayKeyOffsetIsMissing(): void
+    {
+        $event = new Event(['a' => 1]);
+
+        $this->assertFalse(isset($event[1.5]));
+        $this->assertNull($event[null]);
+    }
 }

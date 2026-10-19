@@ -38,6 +38,10 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - HTTP API（ペイロード 2.0）と Lambda 関数 URL で、`cookies` 配列から `Cookie` ヘッダーも組み立てます。
 - `Runtime` と `Http\Runtime` のコンストラクタと `execute()` で、`$logger` に `null` を渡せるようにしました。v0.4.0 では `null` を渡すと TypeError になっていました。
 - HTTP のハンドラーで想定外の例外が出たときのログに、スタックトレースを含めます。
+- `Event::fromJsonString()` は、JSON のオブジェクトか配列以外（`"hello"` など）を受け取ると `JsonException` を投げます。以前は TypeError になっていました。
+- `AbstractLogger` は、文字列以外のログレベルを受け取ると `Psr\Log\InvalidArgumentException` を投げます（PSR-3 に合わせました）。
+- `NanoLogger` と `LtsvFormatter` は、不正な UTF-8 やオブジェクトを含むログでも出力に失敗しません。
+- `WorkerFactory::createFromContainer()` と `HttpWorkerFactory::createFromContainer()` は、コンテナから取り出した値の型を確かめ、違う場合は `UnexpectedValueException` を投げます。
 
 ## [0.4.0] - 2026-10-19
 

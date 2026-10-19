@@ -8,6 +8,9 @@ use ArrayAccess;
 use Error;
 use JsonSerializable;
 
+/**
+ * @implements ArrayAccess<string, string|null>
+ */
 readonly class Context implements JsonSerializable, ArrayAccess
 {
     public function __construct(
@@ -55,6 +58,9 @@ readonly class Context implements JsonSerializable, ArrayAccess
         throw new Error("Cannot modify readonly property");
     }
 
+    /**
+     * @return array<string, string>
+     */
     public function jsonSerialize(): array
     {
         return [

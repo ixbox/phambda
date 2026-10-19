@@ -131,8 +131,8 @@ class ResponseTransformer
     /**
      * Header maps must be JSON objects, but json_encode() turns an empty array into "[]".
      *
-     * @param array<string, mixed> $map
-     * @return array<string, mixed>|\stdClass
+     * @param array<mixed> $map
+     * @return array<mixed>|\stdClass
      */
     private function jsonObject(array $map): array|\stdClass
     {

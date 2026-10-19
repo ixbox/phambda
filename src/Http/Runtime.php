@@ -32,7 +32,8 @@ class Runtime implements RuntimeInterface
     {
         $this->logger->info('Starting HTTP request handling loop');
 
-        while (true) {
+        // The runtime keeps polling the Runtime API until the process is terminated.
+        while (true) { // @phpstan-ignore while.alwaysTrue
             $invocation = null;
             try {
                 $invocation = $this->worker->nextRequest();

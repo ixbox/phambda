@@ -4,6 +4,7 @@ namespace Phambda\Logger;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Psr\Log\InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\LoggerTrait;
 use Psr\Log\LogLevel;
@@ -15,6 +16,9 @@ abstract class AbstractLogger implements LoggerInterface
     private DateTimeZone $timezone;
     private string $dateFormat;
 
+    /**
+     * @param array<string, mixed> $defaultContext
+     */
     public function __construct(
         private readonly LogFormatterInterface $formatter,
         private string $minimumLevel = LogLevel::DEBUG,
@@ -42,6 +46,10 @@ abstract class AbstractLogger implements LoggerInterface
 
     public function log($level, string|Stringable $message, array $context = []): void
     {
+        if (!is_string($level)) {
+            throw new InvalidArgumentException('Log level must be a string, ' . get_debug_type($level) . ' given');
+        }
+
         if ($this->shouldLog($level)) {
             $data = [
                 'time' => $this->getFormattedTime(),

@@ -18,6 +18,8 @@ use Psr\Log\NullLogger;
 
 class HttpWorkerFactory
 {
+    use ResolvesFromContainer;
+
     /**
      * Create a new HttpWorker instance with default dependencies.
      *
@@ -71,18 +73,17 @@ class HttpWorkerFactory
     /**
      * @throws NotFoundExceptionInterface
      * @throws ContainerExceptionInterface
+     * @throws \UnexpectedValueException If a container entry has an unexpected type
      */
     public static function createFromContainer(ContainerInterface $container): Worker
     {
-        $logger = $container->get(LoggerInterface::class);
-
         return new Worker(
-            $container->get(EventWorker::class),
-            $container->get(StreamFactoryInterface::class),
-            $container->get(ResponseFactoryInterface::class),
-            $container->get(RequestTransformer::class),
-            $container->get(ResponseTransformer::class),
-            $logger,
+            self::resolve($container, EventWorker::class),
+            self::resolve($container, StreamFactoryInterface::class),
+            self::resolve($container, ResponseFactoryInterface::class),
+            self::resolve($container, RequestTransformer::class),
+            self::resolve($container, ResponseTransformer::class),
+            self::resolve($container, LoggerInterface::class),
         );
     }
 }

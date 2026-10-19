@@ -9,8 +9,16 @@ use Error;
 use JsonException;
 use JsonSerializable;
 
+/**
+ * Offsets other than string or int are treated as missing keys.
+ *
+ * @implements ArrayAccess<mixed, mixed>
+ */
 readonly class Event implements ArrayAccess, JsonSerializable
 {
+    /**
+     * @param array<mixed> $event
+     */
     public function __construct(
         private array $event,
     ) {
@@ -22,6 +30,10 @@ readonly class Event implements ArrayAccess, JsonSerializable
     public static function fromJsonString(string $json): self
     {
         $event = json_decode($json, flags: JSON_THROW_ON_ERROR | JSON_OBJECT_AS_ARRAY);
+        if (!is_array($event)) {
+            throw new JsonException('Lambda event must be a JSON object or array, ' . get_debug_type($event) . ' given');
+        }
+
         return new self($event);
     }
 
@@ -47,6 +59,10 @@ readonly class Event implements ArrayAccess, JsonSerializable
 
     public function offsetGet(mixed $offset): mixed
     {
+        if (!is_string($offset) && !is_int($offset)) {
+            return null;
+        }
+
         return $this->event[$offset] ?? null;
     }
 
@@ -60,6 +76,9 @@ readonly class Event implements ArrayAccess, JsonSerializable
         throw new Error("Cannot modify readonly property");
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function jsonSerialize(): array
     {
         return $this->event;

@@ -9,3 +9,4 @@
 /pint.json export-ignore
 /rector.php export-ignore
 /runtime-api.yaml export-ignore
+/phpstan.neon export-ignore
