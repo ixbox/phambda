@@ -31,6 +31,8 @@ class Runtime
     public function run(): void
     {
         $this->logger->info('Starting Lambda invocation loop');
+        $this->boot();
+
         // The runtime keeps polling the Runtime API until the process is terminated.
         while (true) { // @phpstan-ignore while.alwaysTrue
             $invocation = null;
@@ -95,6 +97,31 @@ class Runtime
 
                 $this->worker->error($invocation->context->awsRequestId, $runtimeError);
             }
+        }
+    }
+
+    /**
+     * Call boot() on the handler once, during the initialization phase.
+     */
+    private function boot(): void
+    {
+        if (!$this->handler instanceof BootableInterface) {
+            return;
+        }
+
+        try {
+            $this->handler->boot();
+        } catch (\Throwable $error) {
+            $this->logger->critical('Handler boot failed', [
+                'error' => $error->getMessage(),
+                'type' => $error::class,
+                'file' => $error->getFile(),
+                'line' => $error->getLine(),
+                'trace' => explode("\n", $error->getTraceAsString()),
+            ]);
+            $this->worker->initError($error);
+
+            throw InitializationException::fromEnvironment('Handler boot failed: ' . $error->getMessage(), 0, $error);
         }
     }
 

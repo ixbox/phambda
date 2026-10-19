@@ -11,6 +11,7 @@ use Phambda\Exception\RuntimeException;
 use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -18,6 +19,18 @@ use Throwable;
 class Worker
 {
     private readonly string $baseUri;
+
+    /**
+     * Whether /runtime/invocation/next has been called, which ends the initialization phase.
+     */
+    private bool $initialized = false;
+
+    /**
+     * Lambda-Runtime-Invocation-Id of each pending invocation, keyed by request ID.
+     *
+     * @var array<string, string>
+     */
+    private array $lambdaInvocationIds = [];
     public readonly LoggerInterface $logger;
 
     public function __construct(
@@ -38,6 +51,7 @@ class Worker
             $this->logger->debug('Fetching next invocation');
             $request = $this->requestFactory->createRequest('GET', "{$this->baseUri}/runtime/invocation/next");
             $response = $this->client->sendRequest($request);
+            $this->initialized = true;
             if ($response->getStatusCode() !== 200) {
                 $this->logger->warning('Received non-200 response: ' . $response->getStatusCode());
                 throw new RuntimeException(
@@ -49,6 +63,12 @@ class Worker
             $awsRequestId = $response->getHeaderLine('Lambda-Runtime-Aws-Request-Id');
             $this->assertInvocationId($awsRequestId);
 
+            // Echoed back on /response and /error. Older runtime APIs do not send it.
+            $lambdaInvocationId = $response->getHeaderLine('Lambda-Runtime-Invocation-Id');
+            if ($lambdaInvocationId !== '') {
+                $this->lambdaInvocationIds[$awsRequestId] = $lambdaInvocationId;
+            }
+
             $event = Event::fromJsonString($response->getBody()->getContents());
             $context = new Context(
                 functionName: getenv('AWS_LAMBDA_FUNCTION_NAME') ?: '',
@@ -59,6 +79,7 @@ class Worker
                 logGroupName: getenv('AWS_LAMBDA_LOG_GROUP_NAME') ?: '',
                 logStreamName: getenv('AWS_LAMBDA_LOG_STREAM_NAME') ?: '',
                 deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms'),
+                invocationId: $lambdaInvocationId,
             );
 
             $this->logger->info('Received invocation: Request ID ' . $context->awsRequestId);
@@ -79,9 +100,9 @@ class Worker
 
         try {
             $this->logger->debug('Sending invocation response: ' . $invocationId);
-            $request = $this->requestFactory
+            $request = $this->withLambdaInvocationId($invocationId, $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/response")
-                ->withBody($this->streamFactory->createStream($payload));
+                ->withBody($this->streamFactory->createStream($payload)));
 
             $response = $this->client->sendRequest($request);
             if ($response->getStatusCode() !== 202) {
@@ -91,6 +112,7 @@ class Worker
                     $response->getStatusCode()
                 );
             }
+            unset($this->lambdaInvocationIds[$invocationId]);
         } catch (ClientExceptionInterface | RuntimeException $error) {
             $this->logger->error('Failed to send invocation response', [
                 'error' => $error->getMessage(),
@@ -124,13 +146,14 @@ class Worker
                 $errorData['context'] = $error->getContext();
             }
 
-            $request = $this->requestFactory
+            $request = $this->withLambdaInvocationId($invocationId, $this->requestFactory
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/error")
                 ->withBody($this->streamFactory->createStream($this->encodeError($errorData)))
                 ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
-                ->withHeader('Lambda-Runtime-Function-Error-Type', $error::class);
+                ->withHeader('Lambda-Runtime-Function-Error-Type', $error::class));
 
             $this->client->sendRequest($request);
+            unset($this->lambdaInvocationIds[$invocationId]);
         } catch (ClientExceptionInterface $error) {
             $this->logger->critical('Failed to send error response. Runtime cannot proceed without response.', [
                 'error' => $error->getMessage(),
@@ -157,6 +180,16 @@ class Worker
         }
     }
 
+    /**
+     * Echo back the Lambda-Runtime-Invocation-Id received from /next for this request.
+     */
+    private function withLambdaInvocationId(string $awsRequestId, RequestInterface $request): RequestInterface
+    {
+        $lambdaInvocationId = $this->lambdaInvocationIds[$awsRequestId] ?? '';
+
+        return $lambdaInvocationId === '' ? $request : $request->withHeader('Lambda-Runtime-Invocation-Id', $lambdaInvocationId);
+    }
+
     private function assertInvocationId(string $invocationId): void
     {
         if ($invocationId === '') {
@@ -164,8 +197,23 @@ class Worker
         }
     }
 
-    private function initError(Throwable $error): void
+    /**
+     * Report an initialization error to /runtime/init/error.
+     *
+     * The endpoint is only valid during the initialization phase, before the first
+     * /runtime/invocation/next. Once that has been called, this only logs the error.
+     */
+    public function initError(Throwable $error): void
     {
+        if ($this->initialized) {
+            $this->logger->warning('Initialization error is not reported after the first invocation was requested', [
+                'error' => $error->getMessage(),
+                'type' => $error::class,
+            ]);
+
+            return;
+        }
+
         try {
             $errorData = [
                 'errorMessage' => $error->getMessage(),

@@ -149,12 +149,13 @@ class WorkerTest extends TestCase
             ->method('getStatusCode')
             ->willReturn(200);
 
-        $this->response->expects($this->exactly(3))
+        $this->response->expects($this->exactly(4))
             ->method('getHeaderLine')
             ->willReturnMap([
                 ['Lambda-Runtime-Invoked-Function-Arn', 'arn:aws:lambda:region:account-id:function:testFunction'],
                 ['Lambda-Runtime-Aws-Request-Id', 'testRequestId'],
                 ['Lambda-Runtime-Deadline-Ms', '1234567890'],
+                ['Lambda-Runtime-Invocation-Id', 'testInvocationAttemptId'],
             ]);
 
         $jsonResponse = '{"key": "value"}';
@@ -183,6 +184,7 @@ class WorkerTest extends TestCase
         $this->assertSame('testRequestId', $invocation->context->awsRequestId);
         $this->assertSame('/aws/lambda/testFunction', $invocation->context->logGroupName);
         $this->assertSame('2025/02/28/[$LATEST]abcdef1234567890', $invocation->context->logStreamName);
+        $this->assertSame('testInvocationAttemptId', $invocation->context->invocationId);
         $this->assertSame('1234567890', $invocation->context->deadlineMs);
 
         // 環境変数を元に戻す

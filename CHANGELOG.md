@@ -4,6 +4,19 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [0.7.0] - 2026-10-20
+
+### 追加
+
+- `Phambda\BootableInterface` を追加しました。ハンドラーがこれを実装していると、`Runtime` と `Http\Runtime` は最初の呼び出しを受け取る前（Lambda の初期化フェーズ）に `boot()` を 1 回だけ呼びます。`boot()` が例外を投げると、`/runtime/init/error` に通知してからプロセスを終了します。
+- `Phambda\Worker::initError()` と `Phambda\Http\Worker::initError()` を公開しました。
+- Runtime API の `Lambda-Runtime-Invocation-Id` に対応しました。`/runtime/invocation/next` で受け取った値を、同じ呼び出しの `/response` と `/error` に付けて返します。値が送られてこない環境では付けません。
+- `Context` に `invocationId`（`Lambda-Runtime-Invocation-Id` の値。送られてこない場合は空文字列）を追加しました。
+
+### 修正
+
+- `/runtime/init/error` は、初期化フェーズ（最初の `/runtime/invocation/next` より前）にだけ送ります。以前は、2 回目以降の `/next` に失敗したときにも送っていました。
+
 ## [0.6.0] - 2026-10-19
 
 ### 破壊的変更
@@ -85,6 +98,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[0.7.0]: https://github.com/ixbox/phambda/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ixbox/phambda/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ixbox/phambda/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/ixbox/phambda/compare/v0.3.0...v0.4.0

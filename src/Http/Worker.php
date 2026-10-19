@@ -94,6 +94,16 @@ class Worker
     }
 
     /**
+     * Report an initialization error to /runtime/init/error.
+     *
+     * @see EventWorker::initError()
+     */
+    public function initError(\Throwable $error): void
+    {
+        $this->worker->initError($error);
+    }
+
+    /**
      * Respond with HTTP 500.
      *
      * The body only says "Internal Server Error" so that exception messages, stack traces

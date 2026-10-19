@@ -321,33 +321,45 @@ $runtime->run();
 Phambda は、実行環境ごとに PHP のプロセスを 1 つだけ起動し、そのプロセスで呼び出しを順番に処理します。
 そのため、ハンドラーのプロパティに入れたものは、次の呼び出しでも使えます。
 
-初期化処理は、最初の呼び出しのときに `handle()` の中で行ってください。`Runtime::execute()` より前（ハンドラーのコンストラクタの引数など）で失敗すると、Phambda はエラーを通知できず、プロセスが終了します。
+初期化処理は、ハンドラーに `Phambda\BootableInterface` を実装し、`boot()` に書いてください。
+`Runtime` と `Http\Runtime` は、最初の呼び出しを受け取る前（Lambda の初期化フェーズ）に `boot()` を 1 回だけ呼びます。
 
 ```php
-$handler = new class implements RequestHandlerInterface {
-    private ?bool $initialized = null;
+use Phambda\BootableInterface;
+
+$handler = new class implements RequestHandlerInterface, BootableInterface {
     private Database $db;
 
-    public function handle(ServerRequestInterface $request): ResponseInterface
-    {
-        // 最初の呼び出しで 1 回だけ実行する。失敗した場合は、次の呼び出しでやり直す
-        $this->initialized ??= $this->initialize();
-        // ハンドラーロジック
-    }
-
-    private function initialize(): bool
+    public function boot(): void
     {
         $this->db = new Database();
         // ほかの初期化処理もここにまとめる
+    }
 
-        return true;
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        // ハンドラーロジック
     }
 };
 ```
 
-`initialize()` の途中で失敗すると、次の呼び出しで最初からやり直します。何度実行しても問題がないように書いてください。
+`boot()` が例外を投げると、Phambda はその内容を Lambda に初期化エラーとして通知し、プロセスを終了します。次の呼び出しでは、実行環境が作り直されます。
+`Runtime::execute()` より前（ハンドラーのコンストラクタの引数など）で初期化すると、失敗しても Phambda はエラーを通知できません。
 
-static プロパティやシングルトンに入れたリクエストごとのデータも、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
+DB の一時的な障害などで失敗したときに、実行環境を作り直さず同じプロセスのままやり直したい場合は、最初の呼び出しのときに `handle()` の中で初期化します。
+
+```php
+private ?bool $initialized = null;
+
+public function handle(ServerRequestInterface $request): ResponseInterface
+{
+    // 失敗した場合は、その呼び出しのエラーになり、次の呼び出しでやり直す
+    $this->initialized ??= $this->initialize();
+    // ハンドラーロジック
+}
+```
+
+どちらの場合も、static プロパティやシングルトンに入れたリクエストごとのデータは、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
 
 ### メモリ設定の最適化
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Phambda\Http;
 
+use Phambda\BootableInterface;
 use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
@@ -30,6 +31,7 @@ class Runtime
     public function run(): void
     {
         $this->logger->info('Starting HTTP request handling loop');
+        $this->boot();
 
         // The runtime keeps polling the Runtime API until the process is terminated.
         while (true) { // @phpstan-ignore while.alwaysTrue
@@ -89,6 +91,31 @@ class Runtime
 
                 $this->worker->respondWithError($invocation, $runtimeError);
             }
+        }
+    }
+
+    /**
+     * Call boot() on the handler once, during the initialization phase.
+     */
+    private function boot(): void
+    {
+        if (!$this->handler instanceof BootableInterface) {
+            return;
+        }
+
+        try {
+            $this->handler->boot();
+        } catch (\Throwable $error) {
+            $this->logger->critical('Handler boot failed', [
+                'error' => $error->getMessage(),
+                'type' => $error::class,
+                'file' => $error->getFile(),
+                'line' => $error->getLine(),
+                'trace' => explode("\n", $error->getTraceAsString()),
+            ]);
+            $this->worker->initError($error);
+
+            throw InitializationException::fromEnvironment('Handler boot failed: ' . $error->getMessage(), 0, $error);
         }
     }
 
