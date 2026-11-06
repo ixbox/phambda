@@ -187,38 +187,50 @@ $runtime = new Runtime($handler, $logger);
 $runtime->run();
 ```
 
-### セキュリティヘッダーを設定した例
+### ミドルウェアでヘッダーを付ける例
 
-以下は、セキュリティを考慮したヘッダー設定の例です：
+`Http\Runtime` は `RequestHandlerInterface` を 1 つ受け取るだけなので、PSR-15 のミドルウェアを重ねたハンドラーをそのまま渡せます。
+すべての応答に付けたいヘッダーは、ハンドラーごとに書かずにミドルウェアで付けてください。
+`MiddlewareInterface` を使うには、アプリケーションで `psr/http-server-middleware` を追加します（[relay/relay](https://github.com/relayphp/Relay.Relay) などのディスパッチャーを使ってもかまいません）。
 
 ```php
-public function handle(ServerRequestInterface $request): ResponseInterface
+use Phambda\Http\Runtime;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+
+final class SecurityHeaders implements MiddlewareInterface
 {
-    $requestId = $request->getAttribute('awsRequestId');
-    $context = $request->getAttribute('lambda-context');
-
-    $responseData = [
-        'message' => 'Hello from Phambda!',
-        'timestamp' => time(),
-        'request_id' => $requestId,
-    ];
-
-    // セキュリティとトレーサビリティを考慮したヘッダー
-    return new Response(
-        status: 200,
-        headers: [
-            'Content-Type' => 'application/json',
-            'X-Request-ID' => $requestId,
-            'X-Function-Name' => $context->functionName,
-            'X-Function-Version' => $context->functionVersion,
-            'X-Content-Type-Options' => 'nosniff',
-            'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains',
-            'Cache-Control' => 'no-store, max-age=0',
-        ],
-        body: json_encode($responseData)
-    );
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        return $handler->handle($request)
+            ->withHeader('X-Content-Type-Options', 'nosniff')
+            ->withHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+            ->withHeader('Cache-Control', 'no-store');
+    }
 }
+
+// ミドルウェアとハンドラーを、1 つのハンドラーにまとめる
+final class MiddlewareHandler implements RequestHandlerInterface
+{
+    public function __construct(
+        private readonly MiddlewareInterface $middleware,
+        private readonly RequestHandlerInterface $next,
+    ) {
+    }
+
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        return $this->middleware->process($request, $this->next);
+    }
+}
+
+Runtime::execute(new MiddlewareHandler(new SecurityHeaders(), new MyHandler()));
 ```
+
+ハンドラーが例外を投げたときに Phambda が返す 500 応答は、ミドルウェアを通らないので、これらのヘッダーは付きません。
+500 応答にも付けたい場合は、ミドルウェアの中で例外を受け止めて応答を返すか、CloudFront の応答ヘッダーポリシーで付けてください。
 
 ### エラーハンドリングの例
 
