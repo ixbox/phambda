@@ -130,7 +130,10 @@ class Worker
         }
     }
 
-    public function error(string $invocationId, Throwable $error): void
+    /**
+     * @param string|null $errorType Lambda-Runtime-Function-Error-Type. Defaults to "Runtime.<exception class>"
+     */
+    public function error(string $invocationId, Throwable $error, ?string $errorType = null): void
     {
         $this->assertInvocationId($invocationId);
 
@@ -150,7 +153,7 @@ class Worker
                 ->createRequest('POST', "{$this->baseUri}/runtime/invocation/{$invocationId}/error")
                 ->withBody($this->streamFactory->createStream($this->encodeError($errorData)))
                 ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
-                ->withHeader('Lambda-Runtime-Function-Error-Type', $error::class));
+                ->withHeader('Lambda-Runtime-Function-Error-Type', $errorType ?? ErrorType::ofRuntime($error)));
 
             $this->client->sendRequest($request);
             unset($this->lambdaInvocationIds[$invocationId]);
@@ -202,8 +205,10 @@ class Worker
      *
      * The endpoint is only valid during the initialization phase, before the first
      * /runtime/invocation/next. Once that has been called, this only logs the error.
+     *
+     * @param string|null $errorType Lambda-Runtime-Function-Error-Type. Defaults to "Runtime.<exception class>"
      */
-    public function initError(Throwable $error): void
+    public function initError(Throwable $error, ?string $errorType = null): void
     {
         if ($this->initialized) {
             $this->logger->warning('Initialization error is not reported after the first invocation was requested', [
@@ -229,7 +234,7 @@ class Worker
                 ->createRequest('POST', "{$this->baseUri}/runtime/init/error")
                 ->withBody($this->streamFactory->createStream($this->encodeError($errorData)))
                 ->withHeader('Content-Type', 'application/vnd.aws.lambda.error+json')
-                ->withHeader('Lambda-Runtime-Function-Error-Type', 'Unhandled');
+                ->withHeader('Lambda-Runtime-Function-Error-Type', $errorType ?? ErrorType::ofRuntime($error));
 
             $this->client->sendRequest($request);
         } catch (ClientExceptionInterface $error) {

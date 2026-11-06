@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Phambda\Http;
 
 use Phambda\BootableInterface;
+use Phambda\ErrorType;
 use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
@@ -113,7 +114,7 @@ class Runtime
                 'line' => $error->getLine(),
                 'trace' => explode("\n", $error->getTraceAsString()),
             ]);
-            $this->worker->initError($error);
+            $this->worker->initError($error, ErrorType::ofFunction($error));
 
             throw InitializationException::fromEnvironment('Handler boot failed: ' . $error->getMessage(), 0, $error);
         }

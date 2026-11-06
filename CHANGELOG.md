@@ -4,6 +4,15 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [0.7.1] - 2026-11-06
+
+### 修正
+
+- Runtime API の `Lambda-Runtime-Function-Error-Type` を、Lambda が推奨する `<Category.Reason>` の形式で送ります。以前は PHP のクラス名（`/runtime/init/error` では `Unhandled`）を送っていたため、Lambda では `Runtime.Unknown` か `Function.Unknown` として扱われていました。
+  - ハンドラーと `boot()` の例外は `Function.<例外のクラス名>`（例: `Function.LogicException`）、Runtime API との通信やイベントの変換の失敗は `Runtime.<例外のクラス名>`（例: `Runtime.TransformationException`）になります。
+  - エラー本文の `errorType` には、これまでどおり完全なクラス名が入ります。
+- `Phambda\Worker::error()` と `initError()` に、ヘッダーの値を指定する省略可能な引数 `$errorType` を追加しました。
+
 ## [0.7.0] - 2026-10-20
 
 ### 追加
@@ -98,6 +107,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[0.7.1]: https://github.com/ixbox/phambda/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ixbox/phambda/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/ixbox/phambda/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/ixbox/phambda/compare/v0.4.0...v0.5.0

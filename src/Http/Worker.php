@@ -98,9 +98,9 @@ class Worker
      *
      * @see EventWorker::initError()
      */
-    public function initError(\Throwable $error): void
+    public function initError(\Throwable $error, ?string $errorType = null): void
     {
-        $this->worker->initError($error);
+        $this->worker->initError($error, $errorType);
     }
 
     /**

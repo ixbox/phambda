@@ -95,7 +95,8 @@ class Runtime
                     $error
                 );
 
-                $this->worker->error($invocation->context->awsRequestId, $runtimeError);
+                // The handler failed, so report it as a function error with the original exception's type
+                $this->worker->error($invocation->context->awsRequestId, $runtimeError, ErrorType::ofFunction($error));
             }
         }
     }
@@ -119,7 +120,7 @@ class Runtime
                 'line' => $error->getLine(),
                 'trace' => explode("\n", $error->getTraceAsString()),
             ]);
-            $this->worker->initError($error);
+            $this->worker->initError($error, ErrorType::ofFunction($error));
 
             throw InitializationException::fromEnvironment('Handler boot failed: ' . $error->getMessage(), 0, $error);
         }

@@ -38,6 +38,9 @@ final class ScriptedRuntimeApi implements ClientInterface
     {
     }
 
+    /** @var array<string, string> Lambda-Runtime-Function-Error-Type sent to each path */
+    public array $errorTypes = [];
+
     /** @var list<string> Lambda-Runtime-Invocation-Id sent with each call ('' when absent) */
     public array $invocationIdHeaders = [];
 
@@ -56,6 +59,9 @@ final class ScriptedRuntimeApi implements ClientInterface
         $path = (string) preg_replace('#^/2018-06-01#', '', $request->getUri()->getPath());
         $this->calls[] = $request->getMethod() . ' ' . $path;
         $this->invocationIdHeaders[] = $request->getHeaderLine('Lambda-Runtime-Invocation-Id');
+        if ($request->hasHeader('Lambda-Runtime-Function-Error-Type')) {
+            $this->errorTypes[$path] = $request->getHeaderLine('Lambda-Runtime-Function-Error-Type');
+        }
 
         if ($path === '/runtime/invocation/next') {
             $next = array_shift($this->nextResponses) ?? new Response(500);
@@ -278,5 +284,76 @@ class BootTest extends TestCase
         ], $api->calls);
         // Sent back only on /response and /error of the same invocation; omitted when /next had none
         $this->assertSame(['', 'attempt-1', '', 'attempt-2', '', '', ''], $api->invocationIdHeaders);
+    }
+
+    public function testErrorTypeHeaderSeparatesFunctionAndRuntimeErrors(): void
+    {
+        $api = new ScriptedRuntimeApi([ScriptedRuntimeApi::invocation('req-1')]);
+        $handler = new class () implements HandlerInterface {
+            public function handle(Event $event, Context $context): string
+            {
+                throw new \LogicException('handler bug');
+            }
+        };
+
+        try {
+            (new Runtime($handler, worker: $this->worker($api)))->run();
+        } catch (InitializationException) {
+        }
+
+        // The handler's exception is a function error, named after the original exception
+        $this->assertSame(['/runtime/invocation/req-1/error' => 'Function.LogicException'], $api->errorTypes);
+    }
+
+    public function testBootFailureIsAFunctionInitError(): void
+    {
+        $api = new ScriptedRuntimeApi([]);
+
+        try {
+            (new Runtime($this->eventHandler(failBoot: true), worker: $this->worker($api)))->run();
+        } catch (InitializationException) {
+        }
+
+        $this->assertSame(['/runtime/init/error' => 'Function.RuntimeException'], $api->errorTypes);
+    }
+
+    public function testRuntimeApiFailureIsARuntimeInitError(): void
+    {
+        $unreachable = new class ('connection refused') extends \RuntimeException implements ClientExceptionInterface {
+        };
+        $api = new ScriptedRuntimeApi([$unreachable]);
+
+        try {
+            $this->worker($api)->nextInvocation();
+        } catch (InitializationException) {
+        }
+
+        // Anonymous classes are named after their parent class
+        $this->assertSame(['/runtime/init/error' => 'Runtime.RuntimeException'], $api->errorTypes);
+    }
+
+    public function testUntransformableHttpEventIsARuntimeError(): void
+    {
+        $api = new ScriptedRuntimeApi([ScriptedRuntimeApi::invocation('req-1', '{"not":"http"}')]);
+        $psr17 = new Psr17Factory();
+        $httpWorker = HttpWorkerFactory::create(
+            worker: $this->worker($api),
+            serverRequestFactory: $psr17,
+            streamFactory: $psr17,
+            responseFactory: $psr17,
+        );
+        $handler = new class () implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        try {
+            (new HttpRuntime($handler, worker: $httpWorker))->run();
+        } catch (InitializationException) {
+        }
+
+        $this->assertSame(['/runtime/invocation/req-1/error' => 'Runtime.TransformationException'], $api->errorTypes);
     }
 }
