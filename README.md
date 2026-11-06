@@ -267,6 +267,48 @@ public function handle(ServerRequestInterface $request): ResponseInterface
 }
 ```
 
+### SQS と EventBridge のイベントを扱う
+
+HTTP 以外のイベントは、`Phambda\Runtime` に `Phambda\HandlerInterface` を実装したハンドラーを渡して処理します。
+SQS と EventBridge には、イベントを型付きで受け取れるハンドラーを用意しています。
+
+```php
+use Phambda\Context;
+use Phambda\Runtime;
+use Phambda\Sqs\SqsHandler;
+use Phambda\Sqs\SqsRecord;
+
+$handler = new class (reportBatchItemFailures: true) extends SqsHandler {
+    protected function handleRecord(SqsRecord $record, Context $context): void
+    {
+        $order = $record->json(); // 本文を JSON としてデコードする
+        // 例外を投げると、そのメッセージが失敗になる
+    }
+};
+
+Runtime::execute($handler);
+```
+
+`SqsHandler` は、バッチのメッセージを 1 件ずつ `handleRecord()` に渡します。
+
+- `reportBatchItemFailures: true` を指定すると、失敗したメッセージだけを再配信させる部分的なバッチ応答を返します。イベントソースマッピングで `ReportBatchItemFailures` を有効にしているときだけ指定してください。有効にしていないと、Lambda は応答を無視してバッチ全体を成功とみなし、失敗したメッセージも削除します。
+- 指定しない場合は、1 件でも失敗するとバッチ全体が失敗になり、すべてのメッセージが再配信されます。
+- FIFO キューで部分的なバッチ応答を使う場合は、順序を保つため、最初に失敗したメッセージ以降を処理せずに失敗として返します。
+
+EventBridge のイベント（スケジュール実行を含む）は、`EventBridgeHandler` で受け取れます。
+
+```php
+use Phambda\EventBridge\EventBridgeEvent;
+use Phambda\EventBridge\EventBridgeHandler;
+
+$handler = new class extends EventBridgeHandler {
+    protected function handleEvent(EventBridgeEvent $event, Context $context): void
+    {
+        // $event->detailType, $event->source, $event->detail, $event->time など
+    }
+};
+```
+
 ## 設定オプション
 
 Phambda は以下の設定オプションをサポートしています：

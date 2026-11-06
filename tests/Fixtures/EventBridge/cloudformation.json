@@ -1,0 +1,17 @@
+{
+  "version": "0",
+  "source": "aws.cloudformation",
+  "account": "123456789012",
+  "id": "12345678-1234-1234-1234-111122223333",
+  "region": "us-east-1",
+  "detail-type": "CloudFormation Stack Status Change",
+  "time": "2022-04-31T17:00:00Z",
+  "resources": ["arn:aws:cloudformation:us-east-1:123456789012:stack/teststack"],
+  "detail": {
+    "stack-id": "arn:aws:cloudformation:us-west-1:123456789012:stack/teststack",
+    "status-details": {
+      "status": "CREATE_COMPLETE",
+      "status-reason": ""
+    }
+  }
+}
