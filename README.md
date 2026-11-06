@@ -361,12 +361,6 @@ public function handle(ServerRequestInterface $request): ResponseInterface
 
 どちらの場合も、static プロパティやシングルトンに入れたリクエストごとのデータは、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
 
-### メモリ設定の最適化
-
-- 256MB: 基本的な API 処理、シンプルなウェブアプリケーション
-- 512MB: 中規模のアプリケーション、軽量な画像処理
-- 1024MB 以上: 大規模なデータ処理、複雑な計算、画像処理
-
 ### タイムアウト設定
 
 タイムアウトは Lambda 関数の設定で決まります。デフォルトは 3 秒、最大は 900 秒です。Phambda はタイムアウトを独自に設定しません。
@@ -383,47 +377,14 @@ ALB のターゲットグループで複数値ヘッダーを有効にしてい�
 
 ## デバッグとトラブルシューティング
 
-### ログの確認方法
+### カスタムランタイムで起きやすいエラー
 
-Lambda 関数のログは CloudWatch Logs に保存されます。以下の方法でログを確認できます：
+| エラー                      | 考えられる原因                                                       | 確認すること                                                 |
+| --------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `Runtime.InvalidEntrypoint` | `bootstrap` が無い、または実行権限が無い                             | `bootstrap` が zip の直下にあり、`chmod +x` されているか確認 |
+| `Runtime.ExitError`         | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスと CloudWatch Logs を確認                  |
 
-1. AWS マネジメントコンソールから CloudWatch Logs にアクセス
-2. `/aws/lambda/[関数名]` のロググループを選択
-3. 最新のログストリームを選択して詳細を確認
-
-### 一般的なエラーと解決方法
-
-| エラー                            | 考えられる原因                     | 解決方法                                 |
-| --------------------------------- | ---------------------------------- | ---------------------------------------- |
-| `Execution timed out`             | 関数の実行時間が長すぎる           | タイムアウト設定の見直し、処理の最適化   |
-| `Memory size exceeded`            | メモリ使用量が割り当てを超えている | メモリ割り当ての増加、メモリリークの修正 |
-| `Runtime.InvalidEntrypoint`       | `bootstrap` が無い、または実行権限が無い | `bootstrap` が zip の直下にあり、`chmod +x` されているか確認 |
-| `Runtime.ExitError`               | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスとログを確認 |
-| `Internal server error`           | 未処理の例外が発生                 | エラーハンドリングの実装、ログの確認     |
-
-### パフォーマンスチューニング
-
-1. **依存関係の最適化**
-
-   - 不要なパッケージを削除
-   - Composer のオートローダーを最適化 (`--optimize-autoloader`)
-
-2. **メモリ使用量の監視**
-
-   ```php
-   $this->logger->info('メモリ使用量', [
-       'used' => memory_get_usage(true) / 1024 / 1024 . ' MB',
-       'peak' => memory_get_peak_usage(true) / 1024 / 1024 . ' MB',
-   ]);
-   ```
-
-3. **実行時間の計測**
-   ```php
-   $startTime = microtime(true);
-   // 処理
-   $executionTime = microtime(true) - $startTime;
-   $this->logger->info('実行時間', ['time' => $executionTime . ' 秒']);
-   ```
+Phambda がどのエラーを Lambda にどう通知するかは、[docs/error-handling.md](https://github.com/ixbox/phambda/blob/main/docs/error-handling.md) にまとめています。
 
 ## ライセンス
 
@@ -434,5 +395,6 @@ Lambda 関数のログは CloudWatch Logs に保存されます。以下の方�
 コントリビューションは歓迎します！バグ報告や機能提案は、GitHub の Issue を通じて行ってください。プルリクエストを送信する前に、以下のことを確認してください：
 
 1. テストが追加されていること
-2. コードスタイルが守られていること（`composer run-script analyze` を実行）
-3. すべてのテストが通ること（`composer run-script test` を実行）
+2. すべてのテストが通ること（`composer test`）
+3. 静的解析が通ること（`composer analyze`）
+4. コードスタイルが守られていること（`vendor/bin/pint --test`）
