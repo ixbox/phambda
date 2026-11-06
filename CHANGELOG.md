@@ -4,7 +4,7 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
-## [0.7.1] - 2026-11-06
+## [0.7.1] - 2026-11-07
 
 ### 修正
 
