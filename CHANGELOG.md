@@ -4,6 +4,16 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [0.9.0] - 2026-11-07
+
+### 追加
+
+- S3 のイベント通知を扱う `Phambda\S3\S3Handler`、`S3Event`、`S3Record` を追加しました。
+  - `S3Record::$key` は URL デコードしたオブジェクトキーです（`red+flower.jpg` は `red flower.jpg`）。通知に入っている値は `$encodedKey` で取れます。
+  - 通知を設定したときに送られるテストメッセージ（`s3:TestEvent`）は、`isTestEvent` が `true` でレコードのない `S3Event` になり、`S3Handler` は無視します。
+  - SQS や SNS 経由で届いた通知は、`S3Event::fromJson()` にメッセージの本文を渡して読めます。
+  - `eventVersion` のメジャーバージョンが 2 以外のイベントは、`TransformationException` にします。
+
 ## [0.8.0] - 2026-11-07
 
 ### 追加
@@ -117,6 +127,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[0.9.0]: https://github.com/ixbox/phambda/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ixbox/phambda/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/ixbox/phambda/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/ixbox/phambda/compare/v0.6.0...v0.7.0
