@@ -44,6 +44,20 @@ readonly class Context implements JsonSerializable, ArrayAccess
     ) {
     }
 
+    /**
+     * Milliseconds left until the invocation times out. 0 once the deadline has passed.
+     *
+     * @throws \LogicException If the deadline is unknown (deadlineMs is not a Unix time in milliseconds)
+     */
+    public function getRemainingTimeInMillis(): int
+    {
+        if (!ctype_digit($this->deadlineMs)) {
+            throw new \LogicException(sprintf('The invocation deadline is unknown (deadlineMs: "%s")', $this->deadlineMs));
+        }
+
+        return max(0, (int) $this->deadlineMs - (int) floor(microtime(true) * 1000));
+    }
+
     public function offsetExists(mixed $offset): bool
     {
         return match ($offset) {

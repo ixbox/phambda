@@ -56,7 +56,7 @@ public function handle(ServerRequestInterface $request): ResponseInterface
 | `functionName`、`functionVersion`、`invokedFunctionArn` | 関数名、バージョン、呼び出しに使われた ARN |
 | `memoryLimitInMb` | 関数のメモリサイズ |
 | `logGroupName`、`logStreamName` | CloudWatch Logs のロググループとログストリーム |
-| `deadlineMs` | 呼び出しの期限（UNIX 時間のミリ秒） |
+| `deadlineMs` | 呼び出しの期限（UNIX 時間のミリ秒）。残り時間は `getRemainingTimeInMillis()` で取れる |
 | `traceId` | X-Ray のトレースヘッダー。届かなかった場合は空文字列 |
 | `clientContext` | AWS Mobile SDK から呼び出されたときの、クライアントアプリとデバイスの情報（JSON をデコードした配列）。それ以外の呼び出しでは `null` |
 | `cognitoIdentity` | AWS Mobile SDK から呼び出されたときの、Amazon Cognito の ID（`cognitoIdentityId` と `cognitoIdentityPoolId`）。それ以外の呼び出しでは `null` |
@@ -68,7 +68,31 @@ public function handle(ServerRequestInterface $request): ResponseInterface
 タイムアウトは Lambda 関数の設定で決まります。デフォルトは 3 秒、最大は 900 秒です。Phambda はタイムアウトを独自に設定しません。
 API Gateway を前に置く場合は、統合のタイムアウト（HTTP API は最大 30 秒、REST API はデフォルト 29 秒）にも注意してください。関数のタイムアウトを長くしても、先に API Gateway がエラーを返します。
 
-呼び出しの期限は `$context->deadlineMs`（UNIX 時間のミリ秒）で取れます。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で `Context` を取り出せます。
+タイムアウトまでの残り時間（ミリ秒）は、`$context->getRemainingTimeInMillis()` で取れます。期限を過ぎていれば 0 を返します。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で `Context` を取り出せます。
+件数の多い処理は、残り時間を見ながら、タイムアウトになる前に打ち切れます。
+
+```php
+use Phambda\Context;
+use Phambda\Sqs\SqsHandler;
+use Phambda\Sqs\SqsRecord;
+
+final class ImportHandler extends SqsHandler
+{
+    protected function handleRecord(SqsRecord $record, Context $context): void
+    {
+        // 1 件に最大 2 秒かかるなら、残りが 2 秒を切ったら処理しない
+        if ($context->getRemainingTimeInMillis() < 2000) {
+            throw new \RuntimeException('Not enough time left'); // 失敗として返し、後で処理し直す
+        }
+
+        // ...
+    }
+}
+```
+
+この例は、部分的なバッチ応答（`reportBatchItemFailures: true`）を有効にしている場合のものです。
+
+期限は `$context->deadlineMs`（UNIX 時間のミリ秒）でも取れます。`deadlineMs` が空の `Context`（テストで自分で作った場合など）では、`getRemainingTimeInMillis()` は `LogicException` を投げます。
 長い処理は、複数の関数に分けるか、Step Functions などを使うことを検討してください。
 
 ## プロセスを入れ替える

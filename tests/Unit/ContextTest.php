@@ -99,4 +99,41 @@ class ContextTest extends TestCase
 
         $context['functionName'] = 'newFunctionName';
     }
+
+    private function contextWithDeadline(string $deadlineMs): Context
+    {
+        return new Context(
+            functionName: 'testFunction',
+            functionVersion: '1.0',
+            invokedFunctionArn: 'arn:aws:lambda:region:account-id:function:testFunction',
+            memoryLimitInMb: '128',
+            awsRequestId: 'testRequestId',
+            logGroupName: '/aws/lambda/testFunction',
+            logStreamName: '2025/02/28/[$LATEST]abcdef1234567890',
+            deadlineMs: $deadlineMs,
+        );
+    }
+
+    public function testRemainingTimeIsCountedDownToTheDeadline(): void
+    {
+        $nowMs = (int) floor(microtime(true) * 1000);
+        $remaining = $this->contextWithDeadline((string) ($nowMs + 5000))->getRemainingTimeInMillis();
+
+        $this->assertGreaterThan(4000, $remaining);
+        $this->assertLessThanOrEqual(5000, $remaining);
+    }
+
+    public function testRemainingTimeIsZeroOnceTheDeadlineHasPassed(): void
+    {
+        $nowMs = (int) floor(microtime(true) * 1000);
+
+        $this->assertSame(0, $this->contextWithDeadline((string) ($nowMs - 1000))->getRemainingTimeInMillis());
+    }
+
+    public function testRemainingTimeIsUnknownWithoutADeadline(): void
+    {
+        $this->expectException(\LogicException::class);
+
+        $this->contextWithDeadline('')->getRemainingTimeInMillis();
+    }
 }
