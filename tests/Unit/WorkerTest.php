@@ -149,7 +149,7 @@ class WorkerTest extends TestCase
             ->method('getStatusCode')
             ->willReturn(200);
 
-        $this->response->expects($this->exactly(5))
+        $this->response->expects($this->exactly(7))
             ->method('getHeaderLine')
             ->willReturnMap([
                 ['Lambda-Runtime-Invoked-Function-Arn', 'arn:aws:lambda:region:account-id:function:testFunction'],
@@ -157,6 +157,8 @@ class WorkerTest extends TestCase
                 ['Lambda-Runtime-Deadline-Ms', '1234567890'],
                 ['Lambda-Runtime-Invocation-Id', 'testInvocationAttemptId'],
                 ['Lambda-Runtime-Trace-Id', 'Root=1-5759e988-bd862e3fe1be46a994272793;Parent=557abcec3ee5a047;Sampled=1'],
+                ['Lambda-Runtime-Client-Context', '{"client":{"app_title":"MyApp"},"custom":{"key":"value"},"env":{"platform":"Android"}}'],
+                ['Lambda-Runtime-Cognito-Identity', '{"cognitoIdentityId":"us-east-1:abc","cognitoIdentityPoolId":"us-east-1:pool"}'],
             ]);
 
         $jsonResponse = '{"key": "value"}';
@@ -188,6 +190,8 @@ class WorkerTest extends TestCase
         $this->assertSame('testInvocationAttemptId', $invocation->context->invocationId);
         $this->assertSame('1234567890', $invocation->context->deadlineMs);
         $this->assertSame('Root=1-5759e988-bd862e3fe1be46a994272793;Parent=557abcec3ee5a047;Sampled=1', $invocation->context->traceId);
+        $this->assertSame(['client' => ['app_title' => 'MyApp'], 'custom' => ['key' => 'value'], 'env' => ['platform' => 'Android']], $invocation->context->clientContext);
+        $this->assertSame(['cognitoIdentityId' => 'us-east-1:abc', 'cognitoIdentityPoolId' => 'us-east-1:pool'], $invocation->context->cognitoIdentity);
         $this->assertSame('Root=1-5759e988-bd862e3fe1be46a994272793;Parent=557abcec3ee5a047;Sampled=1', getenv('_X_AMZN_TRACE_ID'));
         $this->assertSame('testRequestId', getenv('PHAMBDA_AWS_REQUEST_ID'));
         putenv('_X_AMZN_TRACE_ID');
@@ -250,6 +254,8 @@ class WorkerTest extends TestCase
             ['Lambda-Runtime-Trace-Id', ''],
             ['Lambda-Runtime-Invoked-Function-Arn', ''],
             ['Lambda-Runtime-Deadline-Ms', ''],
+            ['Lambda-Runtime-Client-Context', ''],
+            ['Lambda-Runtime-Cognito-Identity', ''],
         ]);
         $this->stream->method('getContents')->willReturn('{}');
         $this->response->method('getBody')->willReturn($this->stream);
@@ -271,6 +277,34 @@ class WorkerTest extends TestCase
             $this->assertSame('currentRequestId', getenv('PHAMBDA_AWS_REQUEST_ID'));
         } finally {
             putenv('_X_AMZN_TRACE_ID');
+            putenv('PHAMBDA_AWS_REQUEST_ID');
+        }
+    }
+
+    public function testNextInvocationIgnoresHeadersThatAreNotJsonObjects(): void
+    {
+        $this->requestFactory->method('createRequest')->willReturn($this->request);
+        $this->response->method('getStatusCode')->willReturn(200);
+        $this->response->method('getHeaderLine')->willReturnMap([
+            ['Lambda-Runtime-Aws-Request-Id', 'testRequestId'],
+            ['Lambda-Runtime-Invocation-Id', ''],
+            ['Lambda-Runtime-Trace-Id', ''],
+            ['Lambda-Runtime-Invoked-Function-Arn', ''],
+            ['Lambda-Runtime-Deadline-Ms', ''],
+            ['Lambda-Runtime-Client-Context', '{not json'],
+            ['Lambda-Runtime-Cognito-Identity', '["a","b"]'],
+        ]);
+        $this->stream->method('getContents')->willReturn('{}');
+        $this->response->method('getBody')->willReturn($this->stream);
+        $this->client->method('sendRequest')->willReturn($this->response);
+
+        try {
+            // A malformed header must not fail the invocation
+            $invocation = $this->worker->nextInvocation();
+
+            $this->assertNull($invocation->context->clientContext);
+            $this->assertNull($invocation->context->cognitoIdentity);
+        } finally {
             putenv('PHAMBDA_AWS_REQUEST_ID');
         }
     }

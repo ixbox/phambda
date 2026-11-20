@@ -45,6 +45,24 @@ public function handle(ServerRequestInterface $request): ResponseInterface
 
 どちらの場合も、static プロパティやシングルトンに入れたリクエストごとのデータは、次の呼び出しに残ります。呼び出しの合間に DB の接続が切れていることもあるので、再接続できるようにしておいてください。
 
+## 呼び出しの情報（Context）
+
+ハンドラーは、呼び出しの情報を `Phambda\Context` で受け取ります。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で取り出せます。
+
+| プロパティ | 内容 |
+|------------|------|
+| `awsRequestId` | 呼び出しのリクエスト ID |
+| `invocationId` | 呼び出しの試行ごとの ID（`Lambda-Runtime-Invocation-Id`）。Runtime API が送らない場合は空文字列 |
+| `functionName`、`functionVersion`、`invokedFunctionArn` | 関数名、バージョン、呼び出しに使われた ARN |
+| `memoryLimitInMb` | 関数のメモリサイズ |
+| `logGroupName`、`logStreamName` | CloudWatch Logs のロググループとログストリーム |
+| `deadlineMs` | 呼び出しの期限（UNIX 時間のミリ秒） |
+| `traceId` | X-Ray のトレースヘッダー。届かなかった場合は空文字列 |
+| `clientContext` | AWS Mobile SDK から呼び出されたときの、クライアントアプリとデバイスの情報（JSON をデコードした配列）。それ以外の呼び出しでは `null` |
+| `cognitoIdentity` | AWS Mobile SDK から呼び出されたときの、Amazon Cognito の ID（`cognitoIdentityId` と `cognitoIdentityPoolId`）。それ以外の呼び出しでは `null` |
+
+`clientContext` と `cognitoIdentity` は、ヘッダーの値が JSON のオブジェクトとして読めない場合も `null` にし、warning のログを出します。
+
 ## タイムアウト
 
 タイムアウトは Lambda 関数の設定で決まります。デフォルトは 3 秒、最大は 900 秒です。Phambda はタイムアウトを独自に設定しません。

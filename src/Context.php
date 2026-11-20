@@ -9,7 +9,7 @@ use Error;
 use JsonSerializable;
 
 /**
- * @implements ArrayAccess<string, string|null>
+ * @implements ArrayAccess<string, string|array<string, mixed>|null>
  */
 readonly class Context implements JsonSerializable, ArrayAccess
 {
@@ -26,13 +26,28 @@ readonly class Context implements JsonSerializable, ArrayAccess
         public string $invocationId = '',
         /** Lambda-Runtime-Trace-Id: the X-Ray tracing header of this invocation. Empty when tracing data is not sent. */
         public string $traceId = '',
+        /**
+         * Lambda-Runtime-Client-Context, decoded: the client application and device, when
+         * invoked through the AWS Mobile SDK. Null when not sent.
+         *
+         * @var array<string, mixed>|null
+         */
+        public ?array $clientContext = null,
+        /**
+         * Lambda-Runtime-Cognito-Identity, decoded: the Amazon Cognito identity
+         * ("cognitoIdentityId", "cognitoIdentityPoolId"), when invoked through the AWS Mobile SDK.
+         * Null when not sent.
+         *
+         * @var array<string, mixed>|null
+         */
+        public ?array $cognitoIdentity = null,
     ) {
     }
 
     public function offsetExists(mixed $offset): bool
     {
         return match ($offset) {
-            'functionName', 'functionVersion', 'invokedFunctionArn', 'memoryLimitInMb', 'awsRequestId', 'logGroupName', 'logStreamName', 'deadlineMs', 'invocationId', 'traceId' => true,
+            'functionName', 'functionVersion', 'invokedFunctionArn', 'memoryLimitInMb', 'awsRequestId', 'logGroupName', 'logStreamName', 'deadlineMs', 'invocationId', 'traceId', 'clientContext', 'cognitoIdentity' => true,
             default => false,
         };
     }
@@ -50,6 +65,8 @@ readonly class Context implements JsonSerializable, ArrayAccess
             'deadlineMs' => $this->deadlineMs,
             'invocationId' => $this->invocationId,
             'traceId' => $this->traceId,
+            'clientContext' => $this->clientContext,
+            'cognitoIdentity' => $this->cognitoIdentity,
             default => null,
         };
     }
@@ -65,7 +82,7 @@ readonly class Context implements JsonSerializable, ArrayAccess
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|array<string, mixed>|null>
      */
     public function jsonSerialize(): array
     {
@@ -80,6 +97,8 @@ readonly class Context implements JsonSerializable, ArrayAccess
             'deadlineMs' => $this->deadlineMs,
             'invocationId' => $this->invocationId,
             'traceId' => $this->traceId,
+            'clientContext' => $this->clientContext,
+            'cognitoIdentity' => $this->cognitoIdentity,
         ];
     }
 }

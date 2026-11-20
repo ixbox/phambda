@@ -56,6 +56,8 @@ class ContextTest extends TestCase
             'deadlineMs' => '1234567890',
             'invocationId' => '',
             'traceId' => '',
+            'clientContext' => null,
+            'cognitoIdentity' => null,
         ];
 
         $this->assertSame($expected, $context->jsonSerialize());

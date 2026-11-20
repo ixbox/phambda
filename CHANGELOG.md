@@ -9,6 +9,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 ### 追加
 
 - `Phambda\Context` に、X-Ray のトレースヘッダー（Runtime API の `Lambda-Runtime-Trace-Id`）を入れる `traceId` を追加しました。Lambda から届かなかった呼び出しでは空文字列です。
+- `Phambda\Context` に `clientContext` と `cognitoIdentity` を追加しました。AWS Mobile SDK から呼び出されたときに Runtime API が送る `Lambda-Runtime-Client-Context` と `Lambda-Runtime-Cognito-Identity` を、JSON としてデコードした配列です。送られなかった場合と、JSON のオブジェクトとして読めない場合は `null` です。
 
 ### 修正
 

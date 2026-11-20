@@ -12,6 +12,7 @@ use Psr\Http\Client\ClientExceptionInterface;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestFactoryInterface;
 use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Log\LoggerInterface;
 use Throwable;
@@ -104,6 +105,8 @@ class Worker
                 deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms'),
                 invocationId: $lambdaInvocationId,
                 traceId: $traceId,
+                clientContext: $this->decodeHeader($response, 'Lambda-Runtime-Client-Context'),
+                cognitoIdentity: $this->decodeHeader($response, 'Lambda-Runtime-Cognito-Identity'),
             );
 
             $this->logger->info('Received invocation: Request ID ' . $context->awsRequestId);
@@ -116,6 +119,35 @@ class Worker
                 $error
             );
         }
+    }
+
+    /**
+     * Decode a header that carries a JSON object.
+     *
+     * A malformed value only loses that information, so it is logged instead of
+     * failing the invocation.
+     *
+     * @return array<string, mixed>|null Null when the header is absent or not a JSON object
+     */
+    private function decodeHeader(ResponseInterface $response, string $name): ?array
+    {
+        $value = $response->getHeaderLine($name);
+        if ($value === '') {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+        // "{}" decodes to an empty array, which is still a JSON object
+        if (!is_array($decoded) || ($decoded !== [] && array_is_list($decoded))) {
+            $this->logger->warning('Ignored a header that is not a JSON object', [
+                'header' => $name,
+            ]);
+
+            return null;
+        }
+
+        /** @var array<string, mixed> $decoded */
+        return $decoded;
     }
 
     public function respond(string $invocationId, string $payload): void

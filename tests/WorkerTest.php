@@ -32,6 +32,8 @@ class WorkerTest extends TestCase
                 ['Lambda-Runtime-Deadline-Ms', '123456789'],
                 ['Lambda-Runtime-Invocation-Id', ''],
                 ['Lambda-Runtime-Trace-Id', ''],
+                ['Lambda-Runtime-Client-Context', ''],
+                ['Lambda-Runtime-Cognito-Identity', ''],
             ]);
 
         // Create a dummy request
