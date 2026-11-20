@@ -6,8 +6,8 @@ namespace Tests\Unit\RuntimeApi;
 
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Phambda\RuntimeApi\CurlClient;
-use Phambda\RuntimeApi\NetworkException;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Client\NetworkExceptionInterface;
 
 class CurlClientTest extends TestCase
 {
@@ -131,7 +131,7 @@ class CurlClientTest extends TestCase
         try {
             $this->client()->sendRequest($request);
             $this->fail('sendRequest() should fail');
-        } catch (NetworkException $e) {
+        } catch (NetworkExceptionInterface $e) {
             $this->assertSame($request, $e->getRequest());
         }
     }

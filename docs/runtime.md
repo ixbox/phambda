@@ -167,12 +167,13 @@ $worker = HttpWorkerFactory::create(
 
 - 関数に拡張機能が登録されている。拡張機能が無い関数には、Lambda は SIGTERM を送りません。
 - PHP に `pcntl` 拡張が入っている。`shutdown()` の後ですぐにプロセスを終えるには、`posix` 拡張も必要です。PHP の Docker 公式イメージでは `docker-php-ext-install pcntl` で入れます（`posix` は最初から入っています）。static-php-cli のバイナリは、`php -m` で確かめてください。
-- Runtime API とのやり取りに、`Phambda\RuntimeApi\CurlClient` を使う（`curl` 拡張が必要）。
+- Runtime API とのやり取りに、待っている間も PHP に処理を戻す PSR-18 クライアントを使う。`Phambda\RuntimeApi\CurlClient` がそのためのクライアントです（`php-http/curl-client` が必要）。
 - `bootstrap` が PHP を `exec` で起動しているか、SIGTERM を PHP に伝えている（[プロセスを入れ替える](#プロセスを入れ替える)の `bootstrap`）。
 
-`CurlClient` が必要なのは、PHP がシグナルのハンドラーを PHP のコードの実行の合間にしか呼ばないためです。
-ランタイムはほとんどの時間、次の呼び出しを Runtime API に問い合わせたまま待っています。ほかの PSR-18 クライアントでは、その待ちが終わるまで SIGTERM が処理されず、実行環境を止めるときは待ちが終わらないまま、Lambda にプロセスを強制終了されます。
-`CurlClient` は、待っている間も約 1 秒ごとに PHP に処理を戻すので、SIGTERM を受け取ってから約 1 秒以内に `shutdown()` が呼ばれます。
+クライアントを選ぶ必要があるのは、PHP がシグナルのハンドラーを PHP のコードの実行の合間にしか呼ばないためです。
+ランタイムはほとんどの時間、次の呼び出しを Runtime API に問い合わせたまま待っています。たとえば既定の設定の `php-http/curl-client` では、その待ちが終わるまで SIGTERM が処理されず、実行環境を止めるときは待ちが終わらないまま、Lambda にプロセスを強制終了されます。
+`CurlClient` は、`php-http/curl-client` に進捗のコールバック（`CURLOPT_NOPROGRESS` と `CURLOPT_XFERINFOFUNCTION`）を設定しただけのクライアントです。libcurl が待っている間も約 1 秒ごとに PHP に処理を戻すので、SIGTERM を受け取ってから約 1 秒以内に `shutdown()` が呼ばれます。
+`php-http/curl-client` を自分で組み立てる場合は、同じ 2 つのオプションを渡せば同じように動きます。ほかの cURL のオプションは、`new CurlClient(options: [...])` で渡せます。
 
 Lambda は SIGTERM の 2 秒後（内部拡張機能だけの場合は 500 ミリ秒後）にプロセスを強制終了するので、`shutdown()` で使える時間は 1 秒ほどしかありません。内部拡張機能だけの場合は、`shutdown()` が呼ばれる前に終了することもあります。
 実行環境は SIGTERM 無しで止められることもあるので、失ってはいけないデータの送信は、`shutdown()` に頼らず呼び出しごとに済ませてください。
@@ -208,7 +209,7 @@ Lambda は SIGTERM の 2 秒後（内部拡張機能だけの場合は 500 ミ�
 
 PSR-7 / PSR-17 / PSR-18 の実装は、何も指定しなければ [php-http/discovery](https://github.com/php-http/discovery) がインストール済みのものから選びます。
 使う実装を明示したい場合は、Worker を自分で組み立てて渡します。
-Runtime API とのやり取りには、任意の PSR-18 クライアントのほかに、Phambda の `Phambda\RuntimeApi\CurlClient` も使えます。[終了時に後片付けをする](#終了時に後片付けをするsigterm)場合は、`CurlClient` を使ってください。
+[終了時に後片付けをする](#終了時に後片付けをするsigterm)場合は、Runtime API とのやり取りに `Phambda\RuntimeApi\CurlClient`（`php-http/curl-client` に進捗のコールバックを設定したもの）を使ってください。
 
 ```php
 use Http\Client\Curl\Client;

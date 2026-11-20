@@ -12,7 +12,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
   - `Runtime` は、Lambda と同じ `Function.ResponseSizeTooLarge` で呼び出しのエラーにします。
   - `Http\Runtime` は、ハンドラーが例外を投げたときと同じく、HTTP の 500 を返します。base64 で返す本文は約 4/3 倍になるので、本文が 6 MB より小さくても上限を超えることがあります。
 - Lambda が実行環境を止める前に送る SIGTERM を受けて、後片付けができるようにしました。ハンドラーに `Phambda\ShutdownInterface` を実装すると、`Runtime` と `Http\Runtime` は SIGTERM を受け取ったときに `shutdown()` を呼んでから終了します。
-  - Runtime API とのやり取りに、新しく追加した `Phambda\RuntimeApi\CurlClient` を使う必要があります。ほかの PSR-18 クライアントでは、次の呼び出しを待っている間は SIGTERM が処理されないためです。`CurlClient` は `curl` 拡張を直接使う PSR-18 クライアントで、待っている間も約 1 秒ごとに PHP に処理を戻します。
+  - Runtime API とのやり取りには、新しく追加した `Phambda\RuntimeApi\CurlClient` を使ってください。PHP はシグナルのハンドラーを PHP のコードの実行の合間にしか呼ばないので、既定の設定の `php-http/curl-client` などでは、次の呼び出しを待っている間は SIGTERM が処理されません。`CurlClient` は、`php-http/curl-client` に進捗のコールバックを設定して、待っている間も約 1 秒ごとに PHP に処理を戻すようにしたものです。
   - `pcntl` 拡張（すぐに終了するには `posix` 拡張も）が必要です。SIGTERM が送られるのは、拡張機能を登録している関数だけです。
   - `bootstrap` で PHP をループで起動している場合は、SIGTERM を PHP に伝える必要があります。docs の `bootstrap` の例を、そのように書き換えました。
 

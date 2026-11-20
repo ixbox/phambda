@@ -17,7 +17,7 @@
     "psr/http-factory-implementation": "^1.0"
   },
   "suggest": {
-    "ext-curl": "To use Phambda\\RuntimeApi\\CurlClient, which lets ShutdownInterface::shutdown() run on SIGTERM",
+    "php-http/curl-client": "To use Phambda\\RuntimeApi\\CurlClient, which lets ShutdownInterface::shutdown() run on SIGTERM",
     "ext-pcntl": "To call ShutdownInterface::shutdown() on SIGTERM",
     "ext-posix": "To end the process right after ShutdownInterface::shutdown()"
   },
