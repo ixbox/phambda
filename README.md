@@ -1,11 +1,11 @@
 # Phambda
 
 PHP で AWS Lambda の関数を動かすためのランタイムです。
-Lambda のカスタムランタイム（`provided.al2023`）上で Runtime API と直接やり取りし、Web サーバーやアダプターを挟まずに PHP のコードを動かします。
+Lambda の Runtime API と直接やり取りし、Web サーバーやアダプターを挟まずに PHP のコードを動かします。
 
 - HTTP のイベント（API Gateway、関数 URL、ALB）を PSR-7 のリクエストに変換し、PSR-15 のハンドラーで処理する
 - SQS、EventBridge、S3 のイベントを型付きで受け取れる（SQS の部分的なバッチ応答に対応）
-- [static-php-cli](https://static-php.dev/) の静的ビルドと組み合わせて、コンテナイメージを作らずに zip でデプロイできる
+- 関数のコードは zip でデプロイできる。PHP は [customer-managed runtime](https://docs.aws.amazon.com/lambda/latest/dg/runtimes-customer-managed.html) として用意するか、[static-php-cli](https://static-php.dev/) の静的ビルドを Layer に置く
 - PSR-7 / PSR-17 / PSR-18 の実装は同梱せず、アプリケーションが選ぶ
 
 ## ランタイム方式の比較
@@ -14,7 +14,7 @@ AWS Lambda で PHP を動かす主な方法と、Phambda との違いです。
 
 | 方法 | 仕組み | 扱えるイベント | 向いている用途 |
 |------|--------|----------------|----------------|
-| **Phambda**（本ライブラリ） | カスタムランタイム（`provided.al2023`）上の PHP が Runtime API と直接やり取りする。HTTP のイベントは PSR-7 のリクエストに変換し、PSR-15 のハンドラに渡す | HTTP（API Gateway、関数 URL、ALB）と HTTP 以外（SQS など） | Web サーバーを置かずに、PSR-15 のハンドラやイベント処理を軽い構成で動かしたい |
+| **Phambda**（本ライブラリ） | PHP が Lambda の Runtime API と直接やり取りする（customer-managed runtime か `provided.al2023` で動かす）。HTTP のイベントは PSR-7 のリクエストに変換し、PSR-15 のハンドラに渡す | HTTP（API Gateway、関数 URL、ALB）と HTTP 以外（SQS など） | Web サーバーを置かずに、PSR-15 のハンドラやイベント処理を軽い構成で動かしたい |
 | [Bref](https://bref.sh/) | PHP のランタイムを Layer で提供する。PHP-FPM ランタイムを使えば、既存のアプリをそのまま動かせる | HTTP と HTTP 以外 | Laravel や Symfony のアプリを、デプロイ用のツールも含めて揃った環境で運用したい |
 | [Lambda Web Adapter](https://github.com/aws/aws-lambda-web-adapter)（LWA） | Lambda の拡張機能がイベントを HTTP リクエストに変換し、関数の中で動く Web サーバー（nginx + PHP-FPM、FrankenPHP など）に転送する | HTTP（API Gateway、関数 URL、ALB）。HTTP 以外のイベントは、指定したパスへの POST として届く | 既存の Web アプリを、Lambda 向けに書き換えずに動かしたい |
 | [Lambda Web Functions](https://docs.aws.amazon.com/lambda/latest/dg/web-functions.html) | 2026 年 10 月に追加された関数の形態。アプリが listen するポートに、Lambda が HTTP リクエストを直接渡す。1 つの実行環境が複数のリクエストを同時に処理し、HTTPS のエンドポイントも Lambda が用意する | HTTP | 同時リクエストの多い Web アプリや API。ただし公式に対応しているランタイムは、現時点で Node.js だけ |
@@ -72,18 +72,17 @@ Runtime::execute(new class implements HandlerInterface {
 
 ## デプロイ
 
-関数には、PHP のバイナリ（static-php-cli の静的ビルドを Layer に置くなど）、アプリケーションのコードと `vendor/`、それに PHP を起動する実行可能な `bootstrap` を入れます。
+関数のコード（`main.php` などのエントリーポイントと `vendor/`）は zip でデプロイします。
+PHP の本体と、PHP を起動する `bootstrap` の用意の仕方は 2 つあります。
 
-```sh
-#!/bin/sh
-exec /opt/bin/php /var/task/main.php
-```
+- **customer-managed runtime**（推奨）: PHP の Docker 公式イメージに `bootstrap` を足したコンテナイメージを、Lambda のランタイムとして登録します。関数はランタイムに `custom` を、ハンドラーに `main.php` を指定します。PHP の更新は、ランタイムのエイリアスを新しいバージョンに切り替えるだけで、関数を再デプロイせずに反映できます。
+- **static-php-cli**: static-php-cli の静的ビルドを Layer に置き、`bootstrap` を関数の zip に入れて、`provided.al2023` で動かします。ECR や Docker を使わずに試せます。
 
-詳しくは[デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md)を参照してください。
+イメージの作り方、ランタイムの登録、関数の設定は、[デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md)を参照してください。
 
 ## ドキュメント
 
-- [デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md): 関数の構成、`bootstrap`、起きやすいエラー
+- [デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md): customer-managed runtime と static-php-cli での動かし方、`bootstrap`、起きやすいエラー
 - [ローカルで動かす](https://github.com/ixbox/phambda/blob/main/docs/local.md): Runtime Interface Emulator と Docker で、デプロイ前に関数を動かす
 - [HTTP のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/http.md): リクエストの属性、レスポンスの変換、ログ、ミドルウェア
 - [SQS、EventBridge、S3 のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/events.md): 型付きのハンドラーと、SQS の部分的なバッチ応答

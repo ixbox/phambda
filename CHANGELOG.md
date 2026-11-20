@@ -14,6 +14,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
   - 上限に達すると、`run()` は次の呼び出しを受け取る前に終わります。`bootstrap` で PHP を `while` ループで起動し直してください。
 - `Phambda\Context::getRemainingTimeInMillis()` を追加しました。タイムアウトまでの残り時間をミリ秒で返します（期限を過ぎていれば 0）。
 - 関数を Runtime Interface Emulator と Docker で手元で動かす方法を、`docs/local.md` にまとめました。
+- Lambda の customer-managed runtime で動かす方法を、`docs/deployment.md` にまとめました。PHP の Docker 公式イメージからランタイムイメージを作り、関数のコードは zip でデプロイします。README では、この方式を推奨の方法として紹介しています。
 
 ### 修正
 
