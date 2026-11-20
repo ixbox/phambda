@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Phambda\Logger;
 
+use Phambda\Worker;
+
 /**
  * Provides Lambda context handling capabilities for formatters.
  */
@@ -46,10 +48,16 @@ trait LambdaContextTrait
         }
 
         if ($flags['request_id']) {
-            // Add request ID if available
-            $awsRequestId = getenv('_X_AMZN_TRACE_ID');
-            if ($awsRequestId !== false) {
-                $data['request_id'] = $awsRequestId;
+            // Identifiers of the invocation being processed, set by Phambda\Worker
+            $identifiers = [
+                'request_id' => Worker::REQUEST_ID_ENV,
+                'trace_id' => Worker::TRACE_ID_ENV,
+            ];
+            foreach ($identifiers as $key => $var) {
+                $value = getenv($var);
+                if ($value !== false && $value !== '') {
+                    $data[$key] = $value;
+                }
             }
         }
 

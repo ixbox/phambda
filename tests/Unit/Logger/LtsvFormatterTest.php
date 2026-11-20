@@ -4,6 +4,12 @@ namespace Tests\Unit\Logger;
 
 use Phambda\Logger\LtsvFormatter;
 
+// Other tests leave the identifiers of the invocation they received in the environment
+beforeEach(function (): void {
+    putenv('PHAMBDA_AWS_REQUEST_ID');
+    putenv('_X_AMZN_TRACE_ID');
+});
+
 it('formats data correctly', function (): void {
     $formatter = new LtsvFormatter();
     $data = [

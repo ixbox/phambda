@@ -4,6 +4,18 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [Unreleased]
+
+### 追加
+
+- `Phambda\Context` に、X-Ray のトレースヘッダー（Runtime API の `Lambda-Runtime-Trace-Id`）を入れる `traceId` を追加しました。Lambda から届かなかった呼び出しでは空文字列です。
+
+### 修正
+
+- 呼び出しを受け取るたびに、トレースヘッダーを環境変数 `_X_AMZN_TRACE_ID` に設定します。カスタムランタイムでは、この設定はランタイムの役目です。これまでは設定していなかったため、X-Ray や OpenTelemetry の SDK がトレースをつなげられませんでした。
+- `JsonLogger` と `LtsvLogger` のログに、処理中の呼び出しのリクエスト ID が `request_id` として出るようにしました。これまでは `_X_AMZN_TRACE_ID` を `request_id` として出そうとしていましたが、その環境変数が設定されていなかったため、出ていませんでした。トレースヘッダーは `trace_id` に出します。
+  - リクエスト ID は、新しく設定する環境変数 `PHAMBDA_AWS_REQUEST_ID` から読みます。どちらの環境変数も、次の呼び出しを待つ間は削除します。
+
 ## [0.9.0] - 2026-11-07
 
 ### 追加
@@ -127,6 +139,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[Unreleased]: https://github.com/ixbox/phambda/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/ixbox/phambda/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ixbox/phambda/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/ixbox/phambda/compare/v0.7.0...v0.7.1

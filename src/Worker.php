@@ -18,6 +18,17 @@ use Throwable;
 
 class Worker
 {
+    /**
+     * Environment variable holding the request ID of the invocation being processed.
+     * Set when an invocation is received and cleared when the next one is requested.
+     */
+    public const REQUEST_ID_ENV = 'PHAMBDA_AWS_REQUEST_ID';
+
+    /**
+     * Environment variable holding the X-Ray tracing header of the invocation being processed.
+     */
+    public const TRACE_ID_ENV = '_X_AMZN_TRACE_ID';
+
     private readonly string $baseUri;
 
     /**
@@ -47,6 +58,10 @@ class Worker
 
     public function nextInvocation(): Invocation
     {
+        // Do not attribute logs written while waiting to the previous invocation.
+        putenv(self::REQUEST_ID_ENV);
+        putenv(self::TRACE_ID_ENV);
+
         try {
             $this->logger->debug('Fetching next invocation');
             $request = $this->requestFactory->createRequest('GET', "{$this->baseUri}/runtime/invocation/next");
@@ -69,6 +84,14 @@ class Worker
                 $this->lambdaInvocationIds[$awsRequestId] = $lambdaInvocationId;
             }
 
+            // A custom runtime must copy the tracing header to _X_AMZN_TRACE_ID, where
+            // X-Ray and OpenTelemetry SDKs read it. Absent when tracing data is not sent.
+            $traceId = $response->getHeaderLine('Lambda-Runtime-Trace-Id');
+            if ($traceId !== '') {
+                putenv(self::TRACE_ID_ENV . '=' . $traceId);
+            }
+            putenv(self::REQUEST_ID_ENV . '=' . $awsRequestId);
+
             $event = Event::fromJsonString($response->getBody()->getContents());
             $context = new Context(
                 functionName: getenv('AWS_LAMBDA_FUNCTION_NAME') ?: '',
@@ -80,6 +103,7 @@ class Worker
                 logStreamName: getenv('AWS_LAMBDA_LOG_STREAM_NAME') ?: '',
                 deadlineMs: $response->getHeaderLine('Lambda-Runtime-Deadline-Ms'),
                 invocationId: $lambdaInvocationId,
+                traceId: $traceId,
             );
 
             $this->logger->info('Received invocation: Request ID ' . $context->awsRequestId);
