@@ -27,6 +27,7 @@
 
 - `Set-Cookie` は、イベントの形式に合わせて返します（HTTP API と関数 URL は `cookies`、REST API と ALB の複数値ヘッダーは `multiValueHeaders`）。
 - 本文が UTF-8 として正しくない場合と、`Content-Type` がテキスト系（`text/*`、JSON、XML、JavaScript）以外の場合は、base64 で返します。`Content-Type` がない場合は、そのまま返します。
+- Lambda が返せるレスポンスは、HTTP の形式に変換した後の JSON で 6 MB までです。base64 で返す本文は、元の大きさの約 4/3 倍になります。超える場合は Lambda に送らず、500 を返して、大きさをログに出します。大きなファイルは、S3 の署名付き URL へのリダイレクトなどで返してください。
 - ハンドラーが例外を投げると、`{"message":"Internal Server Error"}` の 500 を返し、詳細はログに出します。環境変数 `PHAMBDA_DEBUG=1` を設定すると、例外のメッセージとスタックトレースを返します。
 
 ## ログ

@@ -45,6 +45,9 @@ final class ScriptedRuntimeApi implements ClientInterface
     /** @var list<string> Lambda-Runtime-Invocation-Id sent with each call ('' when absent) */
     public array $invocationIdHeaders = [];
 
+    /** Size of the body of the last POST .../response, in bytes */
+    public int $lastResponseSize = 0;
+
     public static function invocation(string $requestId, string $body = '{}', string $invocationId = ''): ResponseInterface
     {
         $headers = ['Lambda-Runtime-Aws-Request-Id' => $requestId];
@@ -62,6 +65,10 @@ final class ScriptedRuntimeApi implements ClientInterface
         $this->invocationIdHeaders[] = $request->getHeaderLine('Lambda-Runtime-Invocation-Id');
         if ($request->hasHeader('Lambda-Runtime-Function-Error-Type')) {
             $this->errorTypes[$path] = $request->getHeaderLine('Lambda-Runtime-Function-Error-Type');
+        }
+
+        if (str_ends_with($path, '/response')) {
+            $this->lastResponseSize = $request->getBody()->getSize() ?? 0;
         }
 
         if ($path === '/runtime/invocation/next') {
@@ -438,5 +445,70 @@ class BootTest extends TestCase
         }
 
         $this->assertSame(['POST /runtime/init/error'], $api->calls);
+    }
+
+    public function testOversizedResponseIsReportedAsResponseSizeTooLarge(): void
+    {
+        $api = new ScriptedRuntimeApi([
+            ScriptedRuntimeApi::invocation('req-1', '{"size":' . (Worker::MAX_RESPONSE_BYTES + 1) . '}'),
+            ScriptedRuntimeApi::invocation('req-2', '{"size":' . Worker::MAX_RESPONSE_BYTES . '}'),
+        ]);
+        $handler = new class () implements HandlerInterface {
+            public function handle(Event $event, Context $context): string
+            {
+                $size = $event['size'];
+                assert(is_int($size));
+
+                return str_repeat('a', $size);
+            }
+        };
+
+        try {
+            (new Runtime($handler, worker: $this->worker($api)))->run();
+        } catch (InitializationException) {
+        }
+
+        // The oversized response is not sent; a payload exactly at the limit is
+        $this->assertSame([
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-1/error',
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-2/response',
+            'GET /runtime/invocation/next',
+        ], $api->calls);
+        $this->assertSame(['/runtime/invocation/req-1/error' => 'Function.ResponseSizeTooLarge'], $api->errorTypes);
+    }
+
+    public function testOversizedHttpResponseBecomesA500(): void
+    {
+        $event = '{"version":"2.0","rawPath":"/","rawQueryString":"","headers":{},"requestContext":{"http":{"method":"GET","path":"/"}}}';
+        $api = new ScriptedRuntimeApi([ScriptedRuntimeApi::invocation('req-1', $event)]);
+        $psr17 = new Psr17Factory();
+        $httpWorker = HttpWorkerFactory::create(
+            worker: $this->worker($api),
+            serverRequestFactory: $psr17,
+            streamFactory: $psr17,
+            responseFactory: $psr17,
+        );
+        $handler = new class () implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'text/plain'], str_repeat('a', Worker::MAX_RESPONSE_BYTES));
+            }
+        };
+
+        try {
+            (new HttpRuntime($handler, worker: $httpWorker))->run();
+        } catch (InitializationException) {
+        }
+
+        // The body fits, but the converted response does not, so the client gets a 500 instead
+        $this->assertSame([
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-1/response',
+            'GET /runtime/invocation/next',
+        ], $api->calls);
+        $this->assertSame([], $api->errorTypes);
+        $this->assertLessThan(1024, $api->lastResponseSize);
     }
 }

@@ -76,6 +76,18 @@ class Worker
                 throw TransformationException::forResponse('Failed to encode Lambda response', previous: $e);
             }
 
+            $size = strlen($encoded);
+            if ($size > EventWorker::MAX_RESPONSE_BYTES) {
+                throw TransformationException::forResponse(
+                    sprintf('Response is %d bytes after conversion, larger than the %d bytes Lambda accepts', $size, EventWorker::MAX_RESPONSE_BYTES),
+                    [
+                        'size' => $size,
+                        'limit' => EventWorker::MAX_RESPONSE_BYTES,
+                        'body_base64_encoded' => $responsePayload['isBase64Encoded'] ?? false,
+                    ],
+                );
+            }
+
             $this->worker->respond($awsRequestId, $encoded);
 
             $this->logger->info('HTTP response sent', [

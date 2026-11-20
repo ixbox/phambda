@@ -30,6 +30,14 @@ class Worker
      */
     public const TRACE_ID_ENV = '_X_AMZN_TRACE_ID';
 
+    /**
+     * Largest response payload Lambda accepts for a synchronous invocation, in bytes.
+     *
+     * The documented quota is 6 MB. The Runtime API rejects anything larger than this
+     * value with 413 RequestEntityTooLarge, and the caller gets Function.ResponseSizeTooLarge.
+     */
+    public const MAX_RESPONSE_BYTES = 6_291_556;
+
     private readonly string $baseUri;
 
     /**
@@ -153,6 +161,22 @@ class Worker
     public function respond(string $invocationId, string $payload): void
     {
         $this->assertInvocationId($invocationId);
+
+        $size = strlen($payload);
+        if ($size > self::MAX_RESPONSE_BYTES) {
+            // Lambda would reject it anyway. Report it with the sizes so that the cause is clear.
+            $this->logger->error('Response is larger than Lambda accepts', [
+                'invocation_id' => $invocationId,
+                'size' => $size,
+                'limit' => self::MAX_RESPONSE_BYTES,
+            ]);
+            $this->error($invocationId, RuntimeException::forInvocation(
+                sprintf('Response payload is %d bytes, larger than the %d bytes Lambda accepts', $size, self::MAX_RESPONSE_BYTES),
+                $invocationId,
+            ), 'Function.ResponseSizeTooLarge');
+
+            return;
+        }
 
         try {
             $this->logger->debug('Sending invocation response: ' . $invocationId);

@@ -4,6 +4,14 @@
 形式は [Keep a Changelog](https://keepachangelog.com/ja/1.1.0/) に、バージョンは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 v0.3.0 以前の変更は Git のタグとコミット履歴を参照してください。
 
+## [Unreleased]
+
+### 追加
+
+- レスポンスが Lambda の上限（6 MB）より大きい場合は、Runtime API に送る前に検出し、大きさをログに出すようにしました。これまでは Runtime API に拒否されてから、`Failed to send invocation response` という原因のわかりにくいエラーになっていました。
+  - `Runtime` は、Lambda と同じ `Function.ResponseSizeTooLarge` で呼び出しのエラーにします。
+  - `Http\Runtime` は、ハンドラーが例外を投げたときと同じく、HTTP の 500 を返します。base64 で返す本文は約 4/3 倍になるので、本文が 6 MB より小さくても上限を超えることがあります。
+
 ## [0.10.0] - 2026-11-20
 
 ### 追加
@@ -145,6 +153,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - Cookie 配列の変換とレスポンスの base64 判定を修正しました。
 - エラー応答の生成から Nyholm への直接依存を外しました。
 
+[Unreleased]: https://github.com/ixbox/phambda/compare/v0.10.0...HEAD
 [0.10.0]: https://github.com/ixbox/phambda/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/ixbox/phambda/compare/v0.8.0...v0.9.0
 [0.8.0]: https://github.com/ixbox/phambda/compare/v0.7.1...v0.8.0
