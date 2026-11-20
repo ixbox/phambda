@@ -84,6 +84,7 @@ exec /opt/bin/php /var/task/main.php
 ## ドキュメント
 
 - [デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md): 関数の構成、`bootstrap`、起きやすいエラー
+- [ローカルで動かす](https://github.com/ixbox/phambda/blob/main/docs/local.md): Runtime Interface Emulator と Docker で、デプロイ前に関数を動かす
 - [HTTP のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/http.md): リクエストの属性、レスポンスの変換、ログ、ミドルウェア
 - [SQS、EventBridge、S3 のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/events.md): 型付きのハンドラーと、SQS の部分的なバッチ応答
 - [ランタイムの動き](https://github.com/ixbox/phambda/blob/main/docs/runtime.md): 初期化（`boot()`）、タイムアウト、環境変数、使う PSR の実装の指定

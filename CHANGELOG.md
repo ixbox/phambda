@@ -13,6 +13,7 @@ v0.3.0 以前の変更は Git のタグとコミット履歴を参照してく�
 - 決まった回数の呼び出しを処理したとき、またはメモリの使用量が決まった量を超えたときに、PHP のプロセスを入れ替えられるようにしました。環境変数 `PHAMBDA_MAX_INVOCATIONS` と `PHAMBDA_MAX_MEMORY_MB`、またはコンストラクタの引数 `limits`（`Phambda\ProcessLimits`）で指定します。指定しなければ、これまでどおり入れ替えません。
   - 上限に達すると、`run()` は次の呼び出しを受け取る前に終わります。`bootstrap` で PHP を `while` ループで起動し直してください。
 - `Phambda\Context::getRemainingTimeInMillis()` を追加しました。タイムアウトまでの残り時間をミリ秒で返します（期限を過ぎていれば 0）。
+- 関数を Runtime Interface Emulator と Docker で手元で動かす方法を、`docs/local.md` にまとめました。
 
 ### 修正
 

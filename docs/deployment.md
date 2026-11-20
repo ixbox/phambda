@@ -40,3 +40,4 @@ exec /opt/bin/php /var/task/main.php
 | `Runtime.ExitError`         | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスと CloudWatch Logs を確認。プロセスの入れ替えを有効にしている場合は、`bootstrap` が PHP をループで起動し直しているか確認 |
 
 Phambda がどのエラーを Lambda にどう通知するかは、[エラー処理](error-handling.md)にまとめています。
+デプロイする前に手元で動かす方法は、[ローカルで動かす](local.md)を参照してください。
