@@ -10,6 +10,7 @@ use Phambda\Exception\InitializationException;
 use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\HttpWorkerFactory;
+use Phambda\ProcessLimits;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -23,6 +24,7 @@ class Runtime
         private readonly RequestHandlerInterface $handler,
         ?LoggerInterface $logger = null,
         ?Worker $worker = null,
+        private readonly ?ProcessLimits $limits = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
         $this->worker = $worker ?? HttpWorkerFactory::create(logger: $this->logger);
@@ -32,10 +34,13 @@ class Runtime
     public function run(): void
     {
         $this->logger->info('Starting HTTP request handling loop');
+        $limits = $this->resolveLimits();
         $this->boot();
 
-        // The runtime keeps polling the Runtime API until the process is terminated.
-        while (true) { // @phpstan-ignore while.alwaysTrue
+        // The runtime keeps polling the Runtime API until the process is terminated,
+        // or until a process limit is reached.
+        $handled = 0;
+        while (true) {
             $invocation = null;
             try {
                 $invocation = $this->worker->nextRequest();
@@ -92,6 +97,30 @@ class Runtime
 
                 $this->worker->respondWithError($invocation, $runtimeError);
             }
+
+            $reason = $limits->reached(++$handled);
+            if ($reason !== null) {
+                $this->logger->info('Process limit reached. Stopping so that the bootstrap starts a new process.', [
+                    'reason' => $reason,
+                ]);
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * Read the process limits, reporting invalid settings as an initialization error.
+     */
+    private function resolveLimits(): ProcessLimits
+    {
+        try {
+            return $this->limits ?? ProcessLimits::fromEnvironment();
+        } catch (\InvalidArgumentException $error) {
+            $this->logger->critical('Invalid process limits', ['error' => $error->getMessage()]);
+            $this->worker->initError($error);
+
+            throw InitializationException::fromEnvironment('Invalid process limits: ' . $error->getMessage(), 0, $error);
         }
     }
 

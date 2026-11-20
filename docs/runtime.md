@@ -71,6 +71,37 @@ API Gateway を前に置く場合は、統合のタイムアウト（HTTP API �
 呼び出しの期限は `$context->deadlineMs`（UNIX 時間のミリ秒）で取れます。HTTP のハンドラーでは、`$request->getAttribute('lambda-context')` で `Context` を取り出せます。
 長い処理は、複数の関数に分けるか、Step Functions などを使うことを検討してください。
 
+## プロセスを入れ替える
+
+Phambda は 1 つの PHP のプロセスで呼び出しを処理し続けるので、メモリリークがあると、呼び出しのたびにメモリの使用量が増えていきます。
+直せないリークがある場合は、決まった回数の呼び出しを処理したとき、またはメモリの使用量が決まった量を超えたときに、プロセスを入れ替えられます。
+
+| 環境変数 | 内容 |
+|----------|------|
+| `PHAMBDA_MAX_INVOCATIONS` | この回数の呼び出しを処理したら、プロセスを入れ替える（失敗した呼び出しも数える） |
+| `PHAMBDA_MAX_MEMORY_MB` | PHP が確保したメモリ（`memory_get_usage(true)`）がこの値（MB）以上になったら、プロセスを入れ替える |
+
+どちらも、指定しなければ入れ替えません。正の整数でない値を指定すると、初期化エラーになります。
+コードで指定する場合は、`new Runtime($handler, $logger, limits: new ProcessLimits(maxInvocations: 100))` のように `Phambda\ProcessLimits` を渡します。
+
+上限に達すると、`run()` は応答を返した後、次の呼び出しを受け取る前に終わり、PHP のプロセスが終了します。
+**このとき `bootstrap` が PHP を起動し直さなければなりません。** `bootstrap` まで終了すると、Lambda はその呼び出しを `Runtime.ExitError` として記録し、実行環境を作り直します。
+
+```sh
+#!/bin/sh
+set -e
+while true; do
+    /opt/bin/php /var/task/main.php
+done
+```
+
+`set -e` を付けているので、PHP がエラーで終了した場合（終了コードが 0 以外）は、`bootstrap` も終了します。この場合は、これまでどおり Lambda が実行環境を作り直します。
+
+入れ替えには、次の点に注意してください。
+
+- 新しいプロセスを起動して `boot()` を呼ぶ時間は、上限に達した呼び出しの実行時間（課金の対象）に含まれます。呼び出し元には応答を返した後なので、応答が遅くなることはありません。
+- 新しいプロセスで `boot()` が失敗した場合、Lambda の初期化フェーズは終わっているので、初期化エラーとしては記録されません。プロセスがエラーで終了し、Lambda が実行環境を作り直します。
+
 ## 環境変数
 
 | 環境変数                          | 説明                                   | デフォルト値     |
@@ -83,6 +114,8 @@ API Gateway を前に置く場合は、統合のタイムアウト（HTTP API �
 | `AWS_LAMBDA_LOG_STREAM_NAME`      | CloudWatch ログのストリーム名          | -                |
 | `LOG_TIMEZONE`                    | ログのタイムゾーン                     | `UTC`            |
 | `PHAMBDA_DEBUG`                   | `1` のとき、HTTP のハンドラーで例外が出た際の 500 応答に、例外メッセージとスタックトレースを含める。指定しなければ `{"message":"Internal Server Error"}` だけを返し、詳細はログに出す | -                |
+| `PHAMBDA_MAX_INVOCATIONS`         | この回数の呼び出しを処理したら、プロセスを入れ替える（[プロセスを入れ替える](#プロセスを入れ替える)） | -                |
+| `PHAMBDA_MAX_MEMORY_MB`           | PHP が確保したメモリがこの値（MB）以上になったら、プロセスを入れ替える（同上） | -                |
 
 次の環境変数は、Phambda が呼び出しを受け取るたびに設定します。次の呼び出しを待つ間は削除します。
 

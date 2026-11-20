@@ -24,6 +24,8 @@ PHP バイナリを Layer に置いた場合の構成は次のとおりです。
 exec /opt/bin/php /var/task/main.php
 ```
 
+`PHAMBDA_MAX_INVOCATIONS` などでプロセスを入れ替える場合は、PHP を `while` ループで起動し直す `bootstrap` にします（[プロセスを入れ替える](runtime.md#プロセスを入れ替える)）。
+
 関数の設定:
 
 - ランタイム: `provided.al2023`
@@ -35,6 +37,6 @@ exec /opt/bin/php /var/task/main.php
 | エラー                      | 考えられる原因                                                       | 確認すること                                                 |
 | --------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `Runtime.InvalidEntrypoint` | `bootstrap` が無い、または実行権限が無い                             | `bootstrap` が zip の直下にあり、`chmod +x` されているか確認 |
-| `Runtime.ExitError`         | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスと CloudWatch Logs を確認                  |
+| `Runtime.ExitError`         | PHP のプロセスが終了した（PHP バイナリのパス違い、致命的エラーなど） | `bootstrap` のパスと CloudWatch Logs を確認。プロセスの入れ替えを有効にしている場合は、`bootstrap` が PHP をループで起動し直しているか確認 |
 
 Phambda がどのエラーを Lambda にどう通知するかは、[エラー処理](error-handling.md)にまとめています。

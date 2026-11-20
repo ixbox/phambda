@@ -12,6 +12,7 @@ use Phambda\Event;
 use Phambda\Exception\InitializationException;
 use Phambda\Factory\HttpWorkerFactory;
 use Phambda\HandlerInterface;
+use Phambda\ProcessLimits;
 use Phambda\Http\Runtime as HttpRuntime;
 use Phambda\Runtime;
 use Phambda\Worker;
@@ -355,5 +356,87 @@ class BootTest extends TestCase
         }
 
         $this->assertSame(['/runtime/invocation/req-1/error' => 'Runtime.TransformationException'], $api->errorTypes);
+    }
+
+    public function testRuntimeStopsBeforeRequestingTheNextInvocationOnceTheLimitIsReached(): void
+    {
+        $api = new ScriptedRuntimeApi([
+            ScriptedRuntimeApi::invocation('req-1'),
+            ScriptedRuntimeApi::invocation('req-2', '{"fail":true}'),
+            ScriptedRuntimeApi::invocation('req-3'),
+        ]);
+        $handler = new class () implements HandlerInterface {
+            public function handle(Event $event, Context $context): string
+            {
+                if (isset($event['fail'])) {
+                    throw new \RuntimeException('boom');
+                }
+
+                return '"ok"';
+            }
+        };
+
+        // run() returns normally, so the PHP process ends and the bootstrap can start a new one
+        (new Runtime($handler, worker: $this->worker($api), limits: new ProcessLimits(maxInvocations: 2)))->run();
+
+        // A failed invocation counts too
+        $this->assertSame([
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-1/response',
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-2/error',
+        ], $api->calls);
+    }
+
+    public function testHttpRuntimeStopsOnceTheLimitIsReached(): void
+    {
+        $event = '{"version":"2.0","rawPath":"/","rawQueryString":"","headers":{},"requestContext":{"http":{"method":"GET","path":"/"}}}';
+        $api = new ScriptedRuntimeApi([
+            ScriptedRuntimeApi::invocation('req-1', $event),
+            ScriptedRuntimeApi::invocation('req-2', $event),
+        ]);
+        $psr17 = new Psr17Factory();
+        $httpWorker = HttpWorkerFactory::create(
+            worker: $this->worker($api),
+            serverRequestFactory: $psr17,
+            streamFactory: $psr17,
+            responseFactory: $psr17,
+        );
+        $handler = new class () implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return new Response(200);
+            }
+        };
+
+        (new HttpRuntime($handler, worker: $httpWorker, limits: new ProcessLimits(maxInvocations: 1)))->run();
+
+        $this->assertSame([
+            'GET /runtime/invocation/next',
+            'POST /runtime/invocation/req-1/response',
+        ], $api->calls);
+    }
+
+    public function testInvalidLimitIsReportedAsInitializationError(): void
+    {
+        $api = new ScriptedRuntimeApi([ScriptedRuntimeApi::invocation('req-1')]);
+        $handler = new class () implements HandlerInterface {
+            public function handle(Event $event, Context $context): string
+            {
+                return '"ok"';
+            }
+        };
+
+        putenv('PHAMBDA_MAX_INVOCATIONS=many');
+        try {
+            (new Runtime($handler, worker: $this->worker($api)))->run();
+            $this->fail('The runtime should stop when a limit is invalid');
+        } catch (InitializationException $e) {
+            $this->assertStringContainsString('PHAMBDA_MAX_INVOCATIONS', $e->getMessage());
+        } finally {
+            putenv('PHAMBDA_MAX_INVOCATIONS');
+        }
+
+        $this->assertSame(['POST /runtime/init/error'], $api->calls);
     }
 }

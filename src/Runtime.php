@@ -20,6 +20,7 @@ class Runtime
         private readonly HandlerInterface $handler,
         ?LoggerInterface $logger = null,
         ?Worker $worker = null,
+        private readonly ?ProcessLimits $limits = null,
     ) {
         $this->logger = $logger ?? new NullLogger();
         $this->worker = $worker ?? WorkerFactory::create(
@@ -31,10 +32,13 @@ class Runtime
     public function run(): void
     {
         $this->logger->info('Starting Lambda invocation loop');
+        $limits = $this->resolveLimits();
         $this->boot();
 
-        // The runtime keeps polling the Runtime API until the process is terminated.
-        while (true) { // @phpstan-ignore while.alwaysTrue
+        // The runtime keeps polling the Runtime API until the process is terminated,
+        // or until a process limit is reached.
+        $handled = 0;
+        while (true) {
             $invocation = null;
             try {
                 $this->logger->debug('Processing new invocation');
@@ -98,6 +102,30 @@ class Runtime
                 // The handler failed, so report it as a function error with the original exception's type
                 $this->worker->error($invocation->context->awsRequestId, $runtimeError, ErrorType::ofFunction($error));
             }
+
+            $reason = $limits->reached(++$handled);
+            if ($reason !== null) {
+                $this->logger->info('Process limit reached. Stopping so that the bootstrap starts a new process.', [
+                    'reason' => $reason,
+                ]);
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * Read the process limits, reporting invalid settings as an initialization error.
+     */
+    private function resolveLimits(): ProcessLimits
+    {
+        try {
+            return $this->limits ?? ProcessLimits::fromEnvironment();
+        } catch (\InvalidArgumentException $error) {
+            $this->logger->critical('Invalid process limits', ['error' => $error->getMessage()]);
+            $this->worker->initError($error);
+
+            throw InitializationException::fromEnvironment('Invalid process limits: ' . $error->getMessage(), 0, $error);
         }
     }
 
