@@ -66,6 +66,15 @@ API Gateway を前に置く場合は、統合のタイムアウト（HTTP API �
 | `LOG_TIMEZONE`                    | ログのタイムゾーン                     | `UTC`            |
 | `PHAMBDA_DEBUG`                   | `1` のとき、HTTP のハンドラーで例外が出た際の 500 応答に、例外メッセージとスタックトレースを含める。指定しなければ `{"message":"Internal Server Error"}` だけを返し、詳細はログに出す | -                |
 
+次の環境変数は、Phambda が呼び出しを受け取るたびに設定します。次の呼び出しを待つ間は削除します。
+
+| 環境変数                 | 内容 |
+| ------------------------ | ---- |
+| `_X_AMZN_TRACE_ID`       | X-Ray のトレースヘッダー（Runtime API の `Lambda-Runtime-Trace-Id`）。Lambda から届かなかった呼び出しでは設定しない。X-Ray や OpenTelemetry の SDK は、この値を読んでトレースをつなぐ |
+| `PHAMBDA_AWS_REQUEST_ID` | 呼び出しのリクエスト ID。`JsonLogger` と `LtsvLogger` が、ログの `request_id` に使う |
+
+同じ値は、`$context->traceId` と `$context->awsRequestId` でも取れます。
+
 ## 使う PSR の実装を指定する
 
 `Runtime` のコンストラクタが受け取るのは、ハンドラーとロガー、それにランタイム API とやり取りする Worker です。

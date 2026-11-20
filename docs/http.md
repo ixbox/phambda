@@ -43,6 +43,8 @@ Runtime::execute(new MyHandler($logger), $logger);
 
 用意しているロガーは `JsonLogger`、`LtsvLogger`、`NanoLogger`（JSON、最小限）です。どれも PSR-3 の `LoggerInterface` なので、Monolog などに置き換えられます。
 
+`JsonLogger` と `LtsvLogger` は、処理中の呼び出しのリクエスト ID を `request_id` に、X-Ray のトレースヘッダーを `trace_id` に出します（トレースヘッダーは Lambda から届いた場合だけ）。どちらも、Phambda が呼び出しを受け取るたびに環境変数 `PHAMBDA_AWS_REQUEST_ID` と `_X_AMZN_TRACE_ID` に入れている値です。Monolog などを使う場合も、`getenv()` でこれらの環境変数を読めば同じ値をログに出せます。出さない場合は、環境変数 `LOG_DISABLE_REQUEST_ID=1` を設定するか、`LoggerConfiguration` の `contextFlags` で `request_id` を `false` にします。
+
 ## ミドルウェアでヘッダーを付ける
 
 `Http\Runtime` は `RequestHandlerInterface` を 1 つ受け取るだけなので、PSR-15 のミドルウェアを重ねたハンドラーをそのまま渡せます。

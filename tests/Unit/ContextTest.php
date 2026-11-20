@@ -55,6 +55,7 @@ class ContextTest extends TestCase
             'logStreamName' => '2025/02/28/[$LATEST]abcdef1234567890',
             'deadlineMs' => '1234567890',
             'invocationId' => '',
+            'traceId' => '',
         ];
 
         $this->assertSame($expected, $context->jsonSerialize());

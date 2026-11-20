@@ -24,13 +24,15 @@ readonly class Context implements JsonSerializable, ArrayAccess
         public string $deadlineMs,
         /** Lambda-Runtime-Invocation-Id: identifies this invocation attempt. Empty when the Runtime API does not send it. */
         public string $invocationId = '',
+        /** Lambda-Runtime-Trace-Id: the X-Ray tracing header of this invocation. Empty when tracing data is not sent. */
+        public string $traceId = '',
     ) {
     }
 
     public function offsetExists(mixed $offset): bool
     {
         return match ($offset) {
-            'functionName', 'functionVersion', 'invokedFunctionArn', 'memoryLimitInMb', 'awsRequestId', 'logGroupName', 'logStreamName', 'deadlineMs', 'invocationId' => true,
+            'functionName', 'functionVersion', 'invokedFunctionArn', 'memoryLimitInMb', 'awsRequestId', 'logGroupName', 'logStreamName', 'deadlineMs', 'invocationId', 'traceId' => true,
             default => false,
         };
     }
@@ -47,6 +49,7 @@ readonly class Context implements JsonSerializable, ArrayAccess
             'logStreamName' => $this->logStreamName,
             'deadlineMs' => $this->deadlineMs,
             'invocationId' => $this->invocationId,
+            'traceId' => $this->traceId,
             default => null,
         };
     }
@@ -76,6 +79,7 @@ readonly class Context implements JsonSerializable, ArrayAccess
             'logStreamName' => $this->logStreamName,
             'deadlineMs' => $this->deadlineMs,
             'invocationId' => $this->invocationId,
+            'traceId' => $this->traceId,
         ];
     }
 }
