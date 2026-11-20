@@ -83,7 +83,7 @@ PHP の本体と、PHP を起動する `bootstrap` の用意の仕方は 2 つ�
 ## ドキュメント
 
 - [デプロイ](https://github.com/ixbox/phambda/blob/main/docs/deployment.md): customer-managed runtime と static-php-cli での動かし方、`bootstrap`、起きやすいエラー
-- [ローカルで動かす](https://github.com/ixbox/phambda/blob/main/docs/local.md): Runtime Interface Emulator と Docker で、デプロイ前に関数を動かす
+- [ローカルで動かす](https://github.com/ixbox/phambda/blob/main/docs/local.md): Runtime Interface Emulator と Docker、または AWS SAM で、デプロイ前に関数を動かす
 - [HTTP のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/http.md): リクエストの属性、レスポンスの変換、ログ、ミドルウェア
 - [SQS、EventBridge、S3 のイベントを扱う](https://github.com/ixbox/phambda/blob/main/docs/events.md): 型付きのハンドラーと、SQS の部分的なバッチ応答
 - [ランタイムの動き](https://github.com/ixbox/phambda/blob/main/docs/runtime.md): 初期化（`boot()`）、タイムアウト、環境変数、使う PSR の実装の指定
