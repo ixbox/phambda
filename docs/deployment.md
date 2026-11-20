@@ -32,6 +32,10 @@ PHP の本体と `bootstrap` をコンテナイメージにして ECR に置き�
 PHP を更新するときは、新しいイメージをランタイムの新しいバージョンとして登録し、関数が参照しているエイリアスを切り替えます。
 関数は次のコールドスタートで新しいバージョンを使うので、関数ごとに再デプロイする必要はありません。
 
+Phambda は、ランタイムを公開していません。
+使う拡張はアプリケーションによって違ううえ、ランタイムの更新は、それを使うすべての関数に、その関数の権限で反映されるからです。
+次の手順でランタイムイメージを作り、自分のアカウントにランタイムを登録してください。
+
 ### ランタイムイメージを作る
 
 PHP の Docker 公式イメージを土台にします。
@@ -46,7 +50,8 @@ PHP の Docker 公式イメージを土台にします。
 ARG PHP_VERSION=8.5
 FROM php:${PHP_VERSION}-cli
 
-# 拡張を足す場合は、ここで docker-php-ext-install などを使う
+# 拡張を足す（例: pdo_mysql と bcmath）
+RUN docker-php-ext-install pdo_mysql bcmath
 
 COPY hosts /etc/hosts
 COPY resolv.conf /etc/resolv.conf
