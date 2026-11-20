@@ -16,6 +16,11 @@
     "psr/http-client-implementation": "^1.0",
     "psr/http-factory-implementation": "^1.0"
   },
+  "suggest": {
+    "ext-curl": "To use Phambda\\RuntimeApi\\CurlClient, which lets ShutdownInterface::shutdown() run on SIGTERM",
+    "ext-pcntl": "To call ShutdownInterface::shutdown() on SIGTERM",
+    "ext-posix": "To end the process right after ShutdownInterface::shutdown()"
+  },
   "autoload": {
     "psr-4": {
       "Phambda\\": "src"

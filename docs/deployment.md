@@ -67,16 +67,21 @@ ENTRYPOINT ["/var/runtime/bootstrap"]
 ```sh
 #!/bin/sh
 # bootstrap
-set -e
 # Lambda は関数のハンドラー（例: main.php）を最後の引数として渡す
 for handler; do :; done
+# SIGTERM を PHP に伝えてから終了する
+trap 'kill -TERM "$pid" 2>/dev/null; wait "$pid"; exit 0' TERM
 while true; do
-    /usr/local/bin/php "${LAMBDA_TASK_ROOT}/${handler}"
+    /usr/local/bin/php "${LAMBDA_TASK_ROOT}/${handler}" &
+    pid=$!
+    # PHP がエラーで終了したら、bootstrap も終了する
+    wait "$pid" || exit $?
 done
 ```
 
 `bootstrap` が PHP を `while` ループで起動するのは、[プロセスを入れ替える](runtime.md#プロセスを入れ替える)場合に備えるためです。
 入れ替えを使わない場合、PHP のプロセスは終了しないので、ループは 1 周目から先に進みません。
+PHP をバックグラウンドで起動して `wait` で待つのは、Lambda が実行環境を止める前に送る SIGTERM を PHP に伝えて、[終了時の処理](runtime.md#終了時に後片付けをするsigterm)を動かすためです。終了時の処理を使う場合は、イメージに `pcntl` 拡張も入れてください（`docker-php-ext-install pcntl`）。
 
 `hosts` と `resolv.conf` は、ビルドコンテキストに置くファイルです。
 `resolv.conf` は空で構いません（Lambda が DNS の設定を入れます）。

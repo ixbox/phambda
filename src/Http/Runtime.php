@@ -11,6 +11,7 @@ use Phambda\Exception\PhambdaException;
 use Phambda\Exception\RuntimeException;
 use Phambda\Factory\HttpWorkerFactory;
 use Phambda\ProcessLimits;
+use Phambda\ShutdownSignal;
 use Psr\Http\Server\RequestHandlerInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -36,6 +37,7 @@ class Runtime
         $this->logger->info('Starting HTTP request handling loop');
         $limits = $this->resolveLimits();
         $this->boot();
+        ShutdownSignal::register($this->handler, $this->logger);
 
         // The runtime keeps polling the Runtime API until the process is terminated,
         // or until a process limit is reached.

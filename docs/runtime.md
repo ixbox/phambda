@@ -113,18 +113,69 @@ Phambda は 1 つの PHP のプロセスで呼び出しを処理し続けるの�
 
 ```sh
 #!/bin/sh
-set -e
+# SIGTERM を PHP に伝えてから終了する（終了時の処理を使う場合に必要）
+trap 'kill -TERM "$pid" 2>/dev/null; wait "$pid"; exit 0' TERM
 while true; do
-    /opt/bin/php /var/task/main.php
+    /opt/bin/php /var/task/main.php &
+    pid=$!
+    # PHP がエラーで終了したら、bootstrap も終了する
+    wait "$pid" || exit $?
 done
 ```
 
-`set -e` を付けているので、PHP がエラーで終了した場合（終了コードが 0 以外）は、`bootstrap` も終了します。この場合は、これまでどおり Lambda が実行環境を作り直します。
+PHP がエラーで終了した場合（終了コードが 0 以外）は、`bootstrap` も終了します。この場合は、これまでどおり Lambda が実行環境を作り直します。
+PHP をバックグラウンドで起動して `wait` で待っているのは、[終了時に後片付けをする](#終了時に後片付けをするsigterm)場合に、`bootstrap` が受け取った SIGTERM を PHP に伝えるためです。終了時の処理を使わない場合は、`trap` の行は無くても動きます。
 
 入れ替えには、次の点に注意してください。
 
 - 新しいプロセスを起動して `boot()` を呼ぶ時間は、上限に達した呼び出しの実行時間（課金の対象）に含まれます。呼び出し元には応答を返した後なので、応答が遅くなることはありません。
 - 新しいプロセスで `boot()` が失敗した場合、Lambda の初期化フェーズは終わっているので、初期化エラーとしては記録されません。プロセスがエラーで終了し、Lambda が実行環境を作り直します。
+
+## 終了時に後片付けをする（SIGTERM）
+
+拡張機能を登録している関数では、Lambda は実行環境を止める前に、ランタイムのプロセスに SIGTERM を送ります。
+ハンドラーに `Phambda\ShutdownInterface` を実装すると、`Runtime` と `Http\Runtime` は SIGTERM を受け取ったときに `shutdown()` を呼んでから終了します。
+
+```php
+use Phambda\Factory\HttpWorkerFactory;
+use Phambda\Factory\WorkerFactory;
+use Phambda\Http\Runtime;
+use Phambda\RuntimeApi\CurlClient;
+use Phambda\ShutdownInterface;
+
+$handler = new class implements RequestHandlerInterface, ShutdownInterface {
+    public function handle(ServerRequestInterface $request): ResponseInterface
+    {
+        // ハンドラーロジック
+    }
+
+    public function shutdown(): void
+    {
+        // 溜めておいたメトリクスを送る、接続を閉じる、など（1 秒以内に終える）
+    }
+};
+
+// Runtime API とのやり取りに CurlClient を使う
+$worker = HttpWorkerFactory::create(
+    logger: $logger,
+    worker: WorkerFactory::create($logger, new CurlClient()),
+);
+(new Runtime($handler, $logger, $worker))->run();
+```
+
+`shutdown()` が呼ばれるには、次のすべてが必要です。
+
+- 関数に拡張機能が登録されている。拡張機能が無い関数には、Lambda は SIGTERM を送りません。
+- PHP に `pcntl` 拡張が入っている。`shutdown()` の後ですぐにプロセスを終えるには、`posix` 拡張も必要です。PHP の Docker 公式イメージでは `docker-php-ext-install pcntl` で入れます（`posix` は最初から入っています）。static-php-cli のバイナリは、`php -m` で確かめてください。
+- Runtime API とのやり取りに、`Phambda\RuntimeApi\CurlClient` を使う（`curl` 拡張が必要）。
+- `bootstrap` が PHP を `exec` で起動しているか、SIGTERM を PHP に伝えている（[プロセスを入れ替える](#プロセスを入れ替える)の `bootstrap`）。
+
+`CurlClient` が必要なのは、PHP がシグナルのハンドラーを PHP のコードの実行の合間にしか呼ばないためです。
+ランタイムはほとんどの時間、次の呼び出しを Runtime API に問い合わせたまま待っています。ほかの PSR-18 クライアントでは、その待ちが終わるまで SIGTERM が処理されず、実行環境を止めるときは待ちが終わらないまま、Lambda にプロセスを強制終了されます。
+`CurlClient` は、待っている間も約 1 秒ごとに PHP に処理を戻すので、SIGTERM を受け取ってから約 1 秒以内に `shutdown()` が呼ばれます。
+
+Lambda は SIGTERM の 2 秒後（内部拡張機能だけの場合は 500 ミリ秒後）にプロセスを強制終了するので、`shutdown()` で使える時間は 1 秒ほどしかありません。内部拡張機能だけの場合は、`shutdown()` が呼ばれる前に終了することもあります。
+実行環境は SIGTERM 無しで止められることもあるので、失ってはいけないデータの送信は、`shutdown()` に頼らず呼び出しごとに済ませてください。
 
 ## 環境変数
 
@@ -157,6 +208,7 @@ done
 
 PSR-7 / PSR-17 / PSR-18 の実装は、何も指定しなければ [php-http/discovery](https://github.com/php-http/discovery) がインストール済みのものから選びます。
 使う実装を明示したい場合は、Worker を自分で組み立てて渡します。
+Runtime API とのやり取りには、任意の PSR-18 クライアントのほかに、Phambda の `Phambda\RuntimeApi\CurlClient` も使えます。[終了時に後片付けをする](#終了時に後片付けをするsigterm)場合は、`CurlClient` を使ってください。
 
 ```php
 use Http\Client\Curl\Client;

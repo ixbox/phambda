@@ -34,6 +34,7 @@ class Runtime
         $this->logger->info('Starting Lambda invocation loop');
         $limits = $this->resolveLimits();
         $this->boot();
+        ShutdownSignal::register($this->handler, $this->logger);
 
         // The runtime keeps polling the Runtime API until the process is terminated,
         // or until a process limit is reached.
