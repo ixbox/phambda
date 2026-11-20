@@ -71,7 +71,9 @@ class Worker
 
             $responsePayload = $this->responseTransformer->transform($response, $invocation->format);
             try {
-                $encoded = json_encode($responsePayload, JSON_THROW_ON_ERROR);
+                // Escaping "/" (common in base64) and non-ASCII characters (\uXXXX) would only
+                // make the payload larger, and it has to fit in Lambda's response size limit.
+                $encoded = json_encode($responsePayload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             } catch (\JsonException $e) {
                 throw TransformationException::forResponse('Failed to encode Lambda response', previous: $e);
             }

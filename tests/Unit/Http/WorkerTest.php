@@ -191,13 +191,30 @@ class WorkerTest extends TestCase
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
-        ]);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->worker->expects($this->once())
             ->method('respond')
             ->with($awsInvocationId, $expectedResponsePayload);
 
         $this->httpWorker->respond($this->httpInvocation($awsInvocationId, EventFormat::V2), $this->response);
+    }
+
+    public function testRespondDoesNotEscapeSlashesOrNonAsciiCharacters(): void
+    {
+        $this->responseTransformer->method('transform')->willReturn([
+            'statusCode' => 200,
+            'headers' => ['Content-Type' => 'text/html; charset=utf-8'],
+            'body' => '<p>こんにちは</p>',
+            'isBase64Encoded' => false,
+        ]);
+
+        // Escaped, the payload would be larger: "\/" for "/" and "\uXXXX" for each non-ASCII character
+        $this->worker->expects($this->once())
+            ->method('respond')
+            ->with('testInvocationId', '{"statusCode":200,"headers":{"Content-Type":"text/html; charset=utf-8"},"body":"<p>こんにちは</p>","isBase64Encoded":false}');
+
+        $this->httpWorker->respond($this->httpInvocation('testInvocationId', EventFormat::V2), $this->response);
     }
 
     public function testRespondWithCookies(): void
@@ -254,7 +271,7 @@ class WorkerTest extends TestCase
             ],
             'body' => '{"message":"success"}',
             'isBase64Encoded' => false,
-        ]);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->worker->expects($this->once())
             ->method('respond')
@@ -320,7 +337,7 @@ class WorkerTest extends TestCase
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
-        ]);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->worker->expects($this->once())
             ->method('respond')
@@ -386,7 +403,7 @@ class WorkerTest extends TestCase
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
-        ]);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->worker->expects($this->once())
             ->method('respond')
@@ -452,7 +469,7 @@ class WorkerTest extends TestCase
             ],
             'body' => '{"message":"status ' . $statusCode . '"}',
             'isBase64Encoded' => false,
-        ]);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $this->worker->expects($this->once())
             ->method('respond')
