@@ -9,6 +9,11 @@ beforeEach(function (): void {
     putenv('LOG_TIMEZONE');
 });
 
+// Tests that set LOG_TIMEZONE must not change the time zone of tests in other files
+afterEach(function (): void {
+    putenv('LOG_TIMEZONE');
+});
+
 it('filters log levels correctly', function (): void {
     $formatter = Mockery::mock(LogFormatterInterface::class);
     $formatter->shouldReceive('format')
